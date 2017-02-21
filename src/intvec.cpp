@@ -6,18 +6,6 @@
 
 NAMESPACE_BEGIN(monoco)
 
-intvec::encode_type
-intvec::propert_encode(int64_t sz)
-{
-	 if (sz > INT32_MAX || sz < INT32_MIN)
-		 return INTVEC_ENC_INT64;
-	 else if (sz > INT16_MAX || sz < INT16_MIN)
-		 return INTVEC_ENC_INT32;
-	 else
-		 return INTVEC_ENC_INT16;  
-
-}
-
 void
 intvec::_evolve(encode_type new_code)
 {
@@ -191,5 +179,6 @@ intvec::size() const
 		auto vec = _typed_vec<int64_t>();
 		return vec->size();
 	}
+	return 0;
 }
 NAMESPACE_END(monoco)

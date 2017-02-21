@@ -27,20 +27,47 @@
  * POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef __CONFIG_MONOCO_
-#define __CONFIG_MONOCO_
+#ifndef __MBJ_HPP_
+#define __MBJ_HPP_
 
-#define DEBUG_M
+#include "config.hpp"
 
-#include <string>
 
-#ifdef DEBUG_M
-#include <iostream>
-#endif
 
-#define NAMESPACE_BEGIN(name) namespace name {
+NAMESPACE_BEGIN(monoco)
+class mbj
+{
+public:
+	static constexpr uint8_t LRU_BITS = 24;
+	static constexpr size_t  MAX_CLOCK =  (1 << LRU_BITS) - 1;
+	static constexpr uint8_t CLOCK_RESLUTION = 1000;
 
-typedef std::string mstr;
-#define NAMESPACE_END(name) }
+	static constexpr uint8_t STR_TYPE = 0;
+	static constexpr uint8_t LS_TYPE = 0;
+	static constexpr uint8_t VEC_TYPE = 0;
+	static constexpr uint8_t HASH_TYPE = 0;
+	static constexpr uint8_t RB_TYPE = 0;
+	
+	static constexpr uint8_t RAW_ENCODE = 0;
+	static constexpr uint8_t INT_ENCODE = 1;
+	static constexpr uint8_t HT_ENCODE = 2;
+	static constexpr uint8_t ZL_ENCODE = 3;
+	static constexpr uint8_t INTVEC_ENCODE = 4;
+	static constexpr uint8_t STR_ENCODE = 5;
+	static constexpr uint8_t RB_ENCODE = 6;
+	static constexpr uint8_t LS_ENCODE = 7;
 
-#endif // __CONFIG_MONOCO_
+	typedef std::size_t           size_type;
+	
+private:
+	unsigned _type:4;
+	unsigned _encode:4;
+	unsigned _lru:LRU_BITS;
+
+	size_type ref_cnt = 0;
+	void *ptr = nullptr;
+public:
+	mbj():_encode(STR_ENCODE), _ptr()
+};
+NAMESPACE_END(monoco)
+#endif  // __MBJ_HPP_

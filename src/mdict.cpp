@@ -139,7 +139,6 @@ __MDICT__::insert(const key_type& key,
 	return 0;
 }
 
-
 __MDICT_TMP_
 typename __MDICT__::iterator
 __MDICT__::begin()
@@ -153,7 +152,6 @@ __MDICT__::begin() const
 {
 	return const_iterator(std::begin(_ht[0]), this);
 }
-
 
 __MDICT_TMP_
 typename __MDICT__::iterator
