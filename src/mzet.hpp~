@@ -1,0 +1,61 @@
+#ifndef __M_ZSET_HPP_
+#define __M_ZSET_HPP_
+
+#include <vector>
+#include <algorithm>
+#include <boost/bimap.hpp>
+
+#include "common.hpp"
+#include "config.hpp"
+
+NAMESPACE_BEGIN(monoco)
+
+struct key_tag {};
+struct val_tag {};
+
+template <typename KEY, typename VAL>
+class _mzset
+{
+public:
+	typedef string         key_type;
+	typedef int          value_type;
+	
+	typedef boost::bimap
+	<
+		boost::bimaps::tagged<key_type, key_tag>,
+		boost::bimaps::tagged<value_type, val_tag>
+	> mbimap;
+	
+	typedef typename mbimap::value_type position;
+	
+	static constexpr int VEC_TAG = 1;
+	static constexpr int MAP_TAG = 2;
+
+private:
+	int tag = VEC_TAG;
+  
+	std::vector<std::pair<key_type, value_type>> _vec;
+	mbimap _map;
+	
+public:
+	std::size_t size() const
+		{
+			return tag == VEC_TAG ? _vec.size() : _map.size();
+		}
+
+	void insert(const key_type& key, const value_type& val)
+		{
+			if (tag == VEC_TAG) {
+				_vec.insert(std::lower_bound(_vec.begin(), _vec.end,
+											 [&val](const auto &left,
+													const auto &right)
+											 {
+												 return ele.
+													 }
+			} else
+								_map.insert(key, val);
+		}
+};
+
+NAMESPACE_END(monoco)
+#endif 

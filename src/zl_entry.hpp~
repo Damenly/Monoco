@@ -1,0 +1,84 @@
+#include <string>
+#include "common.hpp"
+
+NAMESPACE_BEGIN(monoco)
+
+struct zl_entry
+{
+	any _content;
+	std::size_t encode = 0;
+	
+	zl_entry() = default;
+	zl_entry(const zl_entry& other)
+		{
+			encode = other.encode;
+			_content = other._content;
+		}
+	/*
+	zl_entry(zl_entry&& other)
+		{
+			std::swap(_content, other._content);
+			std::swap(encode, other.encode);
+		}
+	*/
+	~zl_entry() {}
+
+	bool empty() const {return _content.empty();}
+
+	zl_entry(const char *str)
+		{
+			encode = types::M_STR;
+			_content = any(std::move(std::string(str)));
+		}
+	
+	template <typename T>
+	zl_entry(const T& val)
+		{
+			encode = types::hash_type<T>();
+			_content = any(val);
+		}
+		
+	template <class T>
+	auto safe_data()
+		{
+			return any_cast<T>(_content);
+		}
+
+	template <class T>
+	auto unsafe_data()
+		{
+			return *(unsafe_any_cast<T>(&_content));
+		}
+	int64_t to_s64();
+	uint64_t to_u64();
+};
+
+int64_t zl_entry::to_s64()
+{
+	int64_t res = INT64_MAX;
+	if(encode == types::M_INT8)
+		res = safe_data<int8_t>();
+	else if(encode == types::M_INT16)
+		res = safe_data<int16_t>();
+	else if(encode == types::M_INT32)
+		res = safe_data<int32_t>();
+	else if(encode == types::M_INT64)
+		res = safe_data<int64_t>();
+	return res;
+}
+
+uint64_t zl_entry::to_u64()
+{
+	uint64_t res = UINT64_MAX;
+	if(encode == types::M_UINT8)
+		res = safe_data<uint8_t>();
+	else if(encode == types::M_UINT16)
+		res = safe_data<uint16_t>();
+	else if(encode == types::M_UINT32)
+		res = safe_data<uint32_t>();
+	else if(encode == types::M_UINT64)
+		res = safe_data<uint64_t>();
+	return res;
+}
+
+NAMESPACE_END(monoco)

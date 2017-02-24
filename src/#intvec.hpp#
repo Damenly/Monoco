@@ -27,36 +27,63 @@
  * POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef __CONFIG_MONOCO_
-#define __CONFIG_MONOCO_
+#ifndef INTVEC
+#define INTVEC
 
-#define DEBUG_M
+#define INTVEC
 
-#include <string>
-
-#ifdef DEBUG_M
+#include <vector>
+#include <iterator>
+#include <memory>
+#include <typeinfo>
+#include <cstdint>
 #include <iostream>
-using namespace std;
-#endif
 
-#define NAMESPACE_BEGIN(name) namespace name {
+NAMESPACE_BEGIN(monoco)
 
-typedef std::string mstr;
+#define INTVEC_ENC_INT16 (sizeof(int16_t))
+#define INTVEC_ENC_INT32 (sizeof(int32_t))
+#define INTVEC_ENC_INT64 (sizeof(int64_t))
 
-#define NAMESPACE_END(name) }
+class intvec
+{
+public:
+	typedef std::size_t                   size_type;
+	typedef std::vector<int16_t>          Vec_INT_16;
+	typedef std::vector<int32_t>          Vec_INT_32;
+	typedef std::vector<int64_t>          Vec_INT_64;
+	typedef uint8_t                       encode_type;
 
-NAMESPACE_BEGIN(configs)
+	intvec() = default;
+	~intvec();
+	
+	size_type size() const;
+	int64_t random() const;
+	void add(int16_t val);
+	void add(int32_t val);
+	void add(int64_t val);
+	void remove(int64_t val);
+private:
+	void *_vec = nullptr;
+	encode_type _encode = 0;
+few	
+private:
+	void _evolve(encode_type new_code);
+	template <class T>
+	std::vector<T>* _typed_vec() const;
 
-static std::size_t mzset_max_size = 64;
-static std::size_t mzset_max_len = 2 << 8;
-static std::size_t mset_max_size = 64;
-static std::size_t mset_max_len = 2 << 8;
-static std::size_t mht_max_size = 64;
-static std::size_t mht_max_len = 2 << 8;
-static std::size_t mlist_max_size = 64;
-static std::size_t mlist_max_len = 2 << 9;
-static std::size_t intvec_max_len = 2 << 8;
+public:
 
-NAMESPACE_END(configs)
+	template <class T>
+	void creat()
+		{
+			_vec = reinterpret_cast<void *>(new std::vector<T>());
+			_encode = sizeof(T);
+		}
+	template <class T>
+	void get(size_type pos, T* val_ret) const;
+	int64_t get(size_type pos) const;
+};
 
-#endif // __CONFIG_MONOCO_
+NAMESPACE_END(monoco)
+#endif  // INTVEC

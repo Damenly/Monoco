@@ -1,0 +1,60 @@
+#include "config.hpp"
+#include "mbj.hpp"
+#include "mlist.hpp"
+#include <string>
+
+NAMESPACE_BEGIN(monoco)
+
+mbj::mbj(const std::string& str)
+{
+	_content = std::make_shared<string>(new std::string(str));
+	_type = STR_TYPE;
+	_encode = STR_ENCODE;
+}
+
+mbj::mbj(std::string&& str)
+{	
+	_content = std::make_shared<string>(new std::string(str));
+	_type = STR_TYPE;
+	_encode = STR_ENCODE;
+}
+
+mbj::mbj(int64_t val)
+{
+	_content = std::make_shared<int64_t>(new int64_t(val));
+	_type = RAW_TYPE;
+	_encode = INT_ENCODE;
+}
+
+mbj::mbj(double val)
+{
+	std::string tmp = std::to_string(val);
+	_ptr = new std::string(std::move(tmp));
+	_type = STR_TYPE;
+	_encode = FT_ENCODE;
+}
+
+mbj::mbj(long double val)
+{
+	std::string tmp = std::to_string(val);
+	_ptr = new std::string(std::move(tmp));
+	_type = STR_TYPE;
+	_encode = FT_ENCODE;
+}
+
+mbj::create_zlist()
+{
+	_ptr = new zlist();
+	_type = LS_TYPE;
+	_encode = ZL_ENCODE;
+}
+
+mbj::create_list()
+{
+	_ptr = new mlist();
+	_type = LS_TYPE;
+	_encode = ZL_ENCODE;
+}
+
+NAMESPACE_END(monoco)
+

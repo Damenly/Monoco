@@ -4,6 +4,8 @@
 #include <random>
 #include <cassert>
 #include <cstdint>
+#include <typeindex>
+#include <functional>
 #include "config.hpp"
 
 NAMESPACE_BEGIN(monoco)
@@ -30,6 +32,13 @@ public:
 		}
 
 };
+
+NAMESPACE_BEGIN(utility)
+
+
+
+
+NAMESPACE_END(utility)
 
 NAMESPACE_END(monoco)
 
