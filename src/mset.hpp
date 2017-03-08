@@ -4,11 +4,12 @@
 #include <vector>
 #include <unordered_set>
 #include <functional>
+#include "mbj.hpp"
 #include "zl_entry.hpp"
 
 NAMESPACE_BEGIN(monoco)
 
-class mset
+class mset : public mbj
 {
 public:
 	typedef monoco::zl_entry    value_type;
@@ -39,6 +40,9 @@ private:
 		}
 
 public:
+
+	virtual string type_name() const {return "mset";}
+	
 	template <typename T>
 	void insert(const T& val)
 		{
@@ -65,7 +69,7 @@ public:
 			}
 		}
 
-	std::size_t size() const
+	virtual std::size_t size() const
 		{return tag == VEC_TAG ? _vec.size() : _set.size();}
 
 	void clear()
@@ -116,12 +120,20 @@ public:
 
 template <>
 void
-mset::try_evolve<std::string>(const string& value)
+mset::try_evolve<string>(const string& value)
 {
 	if (value.size() > configs::mht_max_size ||
 		_vec.size() > configs::mht_max_len)
 		_evolve();
 }
+
+NAMESPACE_BEGIN(types)
+template <>
+string type_name<mset>() {return "mstr";}
+
+static const size_t M_SET = std::hash<type_index>{}(type_index(typeid(mset)));
+
+NAMESPACE_END(types)
 
 NAMESPACE_END(monoco)
 #endif

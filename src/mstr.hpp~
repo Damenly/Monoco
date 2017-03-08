@@ -1,0 +1,37 @@
+#ifndef _M_STR_HPP_
+#define _M_STR_HPP_
+
+#include <string>
+#include "common.hpp"
+#include "mbj.hpp"
+
+NAMESPACE_BEGIN(monoco)
+
+class mstr : public std::string, public mbj
+{
+public:
+	mstr() {}
+	mstr(const char* cstr): string(cstr) {}
+	mstr(const string& str): string(str) {}
+	mstr(const mstr& other): string(other) {}
+	
+
+	virtual std::size_t size() const {return string::size();}
+};
+
+
+
+NAMESPACE_END(monoco)
+
+namespace std {
+	template <>
+	struct hash<monoco::mstr>
+	{
+		std::size_t operator()(const monoco::mstr& str) const
+			{
+				return 1;
+			}
+	};
+}
+
+#endif 

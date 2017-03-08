@@ -30,25 +30,94 @@
 #ifndef __COMMON_M_HPP
 #define __COMMON_M_HPP
 
+#include <iostream>
 #include <typeinfo>
 #include <typeindex>
 #include <functional>
+#include <limits>
+
+#include <boost/system/error_code.hpp>
 
 #include "config.hpp"
 
+
 NAMESPACE_BEGIN(monoco)
+
+NAMESPACE_BEGIN(errs)
+
+template <typename T>
+void error(const T& msg)
+{
+	std::cerr << msg << std::endl;
+}
+
+template <typename T, typename... Args>
+void error(const T& arg, Args... args)
+{
+	std::cerr << arg << " ";
+	error(args...);
+}
+
+template <typename T>
+void print(const T& msg)
+{
+	std::cout << msg << std::endl;
+}
+
+template <typename T, typename... Args>
+void print(const T& arg, Args... args)
+{
+	std::cout << arg << " ";
+	print(args...);
+}
+
+typedef boost::system::error_code err_code;
+using namespace boost::system::errc;
+
+auto
+make_err(errc_t e)
+{
+	return make_error_code(e);
+}
+	
+NAMESPACE_END(err)
 
 NAMESPACE_BEGIN(types)
 
 using std::hash;
 using std::type_index;
 
+
+
 template <typename T>
-std::size_t hash_type()
+string type_name()
 {
-	return hash<std::type_index>{}(type_index(typeid(T)));
+	return "unknown type";
 }
 
+template <>
+string type_name<string>() {return "string";}
+
+template <>
+string type_name<std::int8_t>() {return "int8_t";}
+
+template <>
+string type_name<std::int16_t>() {return "int16_t";}
+
+template <>
+string type_name<std::int32_t>() {return "int32_t";}
+
+template <>
+string type_name<std::uint8_t>() {return "uint8_t";}
+
+template <>
+string type_name<std::uint16_t>() {return "uint16_t";}
+
+template <>
+string type_name<std::uint32_t>() {return "uint32_t";}
+
+template <>
+string type_name<bool>() {return "bool";}
 
 static const size_t M_INT64 = hash<type_index>{}(type_index(typeid(int64_t)));
 static const size_t M_INT32 = hash<type_index>{}(type_index(typeid(int32_t)));
@@ -60,13 +129,19 @@ static const size_t M_UINT32 = hash<type_index>{}(type_index(typeid(uint32_t)));
 static const size_t M_UINT16 = hash<type_index>{}(type_index(typeid(uint16_t)));
 static const size_t M_UINT8 = hash<type_index>{}(type_index(typeid(uint8_t)));
 
+static const size_t M_FT = hash<type_index>{}(type_index(typeid(float)));
+static const size_t M_DB = hash<type_index>{}(type_index(typeid(double)));
+static const size_t M_LD = hash<type_index>{}(type_index(typeid(long double)));
+
 static const size_t M_BOOL = hash<type_index>{}(type_index(typeid(bool)));
 
-static const size_t M_STR = hash<type_index>{}(type_index(typeid(std::string)));
+static const size_t M_STR = hash<type_index>{}(type_index(typeid(string)));
+
+static constexpr size_t size_t_max = std::numeric_limits<std::size_t>::max();
 
 bool is_int(size_t encode)
 {
-	if (encode == M_INT8 ||
+	if (//encode == M_INT8 ||
 		encode == M_INT16 ||
 		encode == M_INT32 ||
 		encode == M_INT64)
@@ -74,9 +149,18 @@ bool is_int(size_t encode)
 	return false;
 }
 
+bool is_float(size_t encode)
+{
+	if (encode == M_FT ||
+		encode == M_DB ||
+		encode == M_LD)
+		return true;
+	return false;
+}
+
 bool is_uint(size_t encode)
 {
-	if (encode == M_UINT8 ||
+	if (//encode == M_UINT8 ||
 		encode == M_UINT16 ||
 		encode == M_UINT32 ||
 		encode == M_UINT64)
@@ -84,6 +168,84 @@ bool is_uint(size_t encode)
 	return false;
 }
 
+template <typename T>
+std::size_t hash_type()
+{
+	return sizeof(T);
+}
+
+template <>
+std::size_t hash_type<int8_t>()
+{
+	return M_INT8;
+}
+
+template <>
+std::size_t hash_type<int16_t>()
+{
+	return M_INT16;
+}
+
+template <>
+std::size_t hash_type<int32_t>()
+{
+	return M_INT32;
+}
+
+template <>
+std::size_t hash_type<int64_t>()
+{
+	return M_INT64;
+}
+
+
+template <>
+std::size_t hash_type<uint8_t>()
+{
+	return M_UINT8;
+}
+
+template <>
+std::size_t hash_type<uint16_t>()
+{
+	return M_UINT16;
+}
+
+template <>
+std::size_t hash_type<uint32_t>()
+{
+	return M_UINT32;
+}
+
+template <>
+std::size_t hash_type<uint64_t>()
+{
+	return M_UINT64;
+}
+
+template <>
+std::size_t hash_type<string>()
+{
+	return M_STR;
+}
+
+template <>
+std::size_t hash_type<float>()
+{
+	return M_FT;
+}
+
+template <>
+std::size_t hash_type<double>()
+{
+	return M_DB;
+}
+template <>
+std::size_t hash_type<long double>()
+{
+	return M_LD;
+}
 NAMESPACE_END(types)
+
 NAMESPACE_END(monoco)
 #endif // __COMMON_M_HPP

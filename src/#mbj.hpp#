@@ -1,4 +1,4 @@
-/*
+e
  * Copyright (c) 2017, Damenly Su <Damenly at live dot com>
  * All rights reserved.
  *
@@ -27,22 +27,37 @@
  * POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef __MONOCO_HPP
-#define __MONOCO_HPP
+#ifndef __MBJ_HPP_
+#define __MBJ_HPP_
 
-#include <vector>
-#include "mdict.hpp"
-#include "db.hpp"
+#include <memory>
+#include <ctime>
+#include <limits>
+#include "config.hpp"
+
 
 NAMESPACE_BEGIN(monoco)
 
-class server
+class mbj
 {
-private:
-	std::vector<mdb> _dbs;
-
 public:
-   
+	static constexpr uint8_t LRU_BITS = sizeof(std::time_t) * 8;
+	static constexpr size_t  MAX_CLOCK =  (1 << 24) - 1;
+	static constexpr size_t CLOCK_RESLUTION = 1000;
+	typedef std::size_t           size_type;
+
+	virtual ~mbj() {};
+
+    virtual size_t size() const
+    {return std::numeric_limits<size_t>::max();}
+
+	void update_lru() const
+		{
+			_lru = std::time(nullptr);
+		}
+private:
+	mutable std::time_t _lru = std::time(nullptr);
 };
+
 NAMESPACE_END(monoco)
-#endif // end of __MONOCO_HPP
+#endif  // __MBJ_HPP_

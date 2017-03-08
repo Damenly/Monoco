@@ -5,10 +5,11 @@
 #include <unordered_map>
 #include <functional>
 #include "zl_entry.hpp"
+#include "mbj.hpp"
 
 NAMESPACE_BEGIN(monoco)
 
-class mht
+class mht : public mbj
 {
 public:
 	typedef std::string key_type;
@@ -42,6 +43,8 @@ private:
 
 public:
 
+	virtual string type_name() const {return "mht";}
+	
 	void clear()
 		{
 			_vec.clear();
@@ -69,7 +72,8 @@ public:
 			                                 {
 												 return p.first == key;
 											 });
-					con.erase(iter);
+					if (iter != con.end())
+						con.erase(iter);
 				};
 
 			if (tag == VEC_TAG)
@@ -87,20 +91,39 @@ public:
 											 return (p.first == key);
 										 });
 				if (iter == _vec.end())
-					return static_cast<value_type*>(nullptr);
+					return value_type();
 				else
-					return &(iter->second);
+					return iter->second;
 			}
 			else {
 				auto iter = _map.find(key);
 				if (iter == _map.end())
-					return static_cast<value_type*>(nullptr);
+					return value_type();
 				else
-					return &(iter->second);
+					return iter->second;
 			}
 		}
 
-	std::size_t size() const
+	void update(const key_type& key, const value_type& val)
+		{
+			if (tag == VEC_TAG) {
+				auto iter = std::find_if(_vec.begin(), _vec.end(),
+										 [&key](auto& p)
+										 {
+											 return (p.first == key);
+										 });
+				if (iter == _vec.end())
+					_vec.emplace_back(key, val);
+				else
+					iter->second = val;
+			}
+			else {
+				_map[key] = val;
+			}
+		}
+
+
+	virtual std::size_t size() const
 		{return tag == VEC_TAG ? _vec.size() : _map.size();}
 
 	bool exists(const key_type& key)
@@ -152,5 +175,13 @@ mht::try_evolve<std::string>(const key_type& key, const string& value)
 		_evolve();
 }
 
+NAMESPACE_BEGIN(types)
+template <>
+string type_name<mht>() {return "mht";}
+
+static const size_t M_HT = std::hash<type_index>{}(type_index(typeid(mht)));
+
+NAMESPACE_END(types)
+	
 NAMESPACE_END(monoco)
 #endif

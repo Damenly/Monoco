@@ -30,7 +30,7 @@
 #ifndef __CONFIG_MONOCO_
 #define __CONFIG_MONOCO_
 
-#define DEBUG_M
+//#define DEBUG_M
 
 #include <string>
 
@@ -40,8 +40,6 @@ using namespace std;
 #endif
 
 #define NAMESPACE_BEGIN(name) namespace name {
-
-typedef std::string mstr;
 
 #define NAMESPACE_END(name) }
 
@@ -57,6 +55,13 @@ static std::size_t mlist_max_size = 64;
 static std::size_t mlist_max_len = 2 << 9;
 static std::size_t intvec_max_len = 2 << 8;
 
+static std::string aof_path = "~/mdb.aof";
 NAMESPACE_END(configs)
+
+NAMESPACE_BEGIN(monoco)
+
+typedef std::string string;
+
+NAMESPACE_END(monoco)
 
 #endif // __CONFIG_MONOCO_

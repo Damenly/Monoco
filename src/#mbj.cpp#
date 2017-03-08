@@ -1,0 +1,11 @@
+
+#include "mbj.hpp"
+#include "mlist.hpp"
+#include <string>
+
+NAMESPACE_BEGIN(monoco)
+
+
+
+NAMESPACE_END(monoco)
+

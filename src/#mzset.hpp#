@@ -9,15 +9,16 @@
 
 #include "common.hpp"
 #include "config.hpp"
+#include "mbj.hpp"
 
 NAMESPACE_BEGIN(monoco)
 
 template <typename KEY, typename VAL>
-class _mzset
+class mzset
 {
 public:
-	typedef string         key_type;
-	typedef int          value_type;
+	typedef KEY          key_type;
+	typedef VAL          value_type;
 	
 	typedef boost::bimap
 	<
@@ -52,7 +53,7 @@ private:
 		}
 		
 public:
-	std::size_t size() const
+	virtual std::size_t size() const
 		{
 			return tag == VEC_TAG ? _vec.size() : _map.size();
 		}
@@ -81,6 +82,11 @@ public:
 				_map.insert(position(key, val));
 		}
 
+	void insert(const std::pair<key_type, value_type>& pr)
+		{
+			insert(pr.first, pr.second);
+		}
+	
 	void remove(const key_type& key)
 		{
 			if (tag == VEC_TAG) {
@@ -101,16 +107,25 @@ public:
 
 	value_type get(const key_type& key) const
 		{
+			auto max_val = std::numeric_limits<value_type>::max();
+			
 			if (tag == VEC_TAG) {
 				auto iter = std::find_if(_vec.begin(), _vec.end(),
 										 [&key](auto &ele)
 										 {
 											 return ele.first == key;
 										 });
-				return iter->second;
+				if (iter == _vec.end())
+					return max_val;
+				else
+					return iter->second;
 			}
 			else {
-				return _map.find(position(key, value_type())).get_right;
+				auto iter = _map.find(position(key, value_type()));
+				if (iter == _map.end())
+					return max_val;
+				else
+					return iter->get_right();
 			}
 		}
 
@@ -136,6 +151,42 @@ public:
 			return std::numeric_limits<std::size_t>::max();
 		}
 
+	std::size_t count(const value_type& start,
+					  const value_type& finsh) const
+		{
+			assert(start <= finsh);
+			if (tag == VEC_TAG) {
+				auto iter1 = std::lower_bound(_vec.begin(), _vec.end(),
+											  std::make_pair
+											  (key_type(), start),
+											  [](auto &left, auto &right)
+											  {
+												  return left.second <
+												  right.second;
+											  });
+				auto iter2 = std::upper_bound(_vec.begin(), _vec.end(),
+											  std::make_pair
+											  (key_type(), finsh),
+											  [](auto &left, auto &right)
+											  {
+												  return left.second <
+												  right.second;
+											  });
+				if (iter1 == iter2)
+					return 0;
+				else
+					return std::distance(iter1, iter2);
+			}
+			else {
+				auto iter1 = _map.right.lower_bound(start);
+				auto iter2 = _map.right.upper_bound(finsh);
+				if (iter1 == iter2)
+					return 0;
+				else
+					return std::distance(iter1, iter2);
+			}
+		}
+
 	template <class CON>
 	void get(CON &con, std::size_t start, std::size_t finsh)
 		{
@@ -159,6 +210,22 @@ public:
 			}
 		}
 };
+
+class zset : public mzset<string, long double>, public mbj
+{
+public:
+	virtual size_t size() const {return mzset::size();}
+	virtual ~zset(){};
+};
+
+NAMESPACE_BEGIN(types)
+
+static const std::size_t M_ZSET = hash_type<zset>();
+
+template <>
+string type_name<zset>() {return "zset";}
+
+NAMESPACE_END(types)
 
 NAMESPACE_END(monoco)
 #endif 

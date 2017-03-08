@@ -30,54 +30,34 @@
 #ifndef __MBJ_HPP_
 #define __MBJ_HPP_
 
-#include "config.hpp"
 #include <memory>
+#include <ctime>
+#include <limits>
+#include "config.hpp"
 
 
 NAMESPACE_BEGIN(monoco)
-using std::string;
 
 class mbj
 {
 public:
-	static constexpr uint8_t LRU_BITS = 24;
-	static constexpr size_t  MAX_CLOCK =  (1 << LRU_BITS) - 1;
-	static constexpr uint8_t CLOCK_RESLUTION = 1000;
-
-	static constexpr uint8_t RAW_TYPE = 16;
-	static constexpr uint8_t STR_TYPE = 0;
-	static constexpr uint8_t LS_TYPE = 1;
-	static constexpr uint8_t SET_TYPE = 2;
-	static constexpr uint8_t HASH_TYPE = 4;
-	static constexpr uint8_t ZSET_TYPE = 8;
-	
-
-	static constexpr uint8_t INT_ENCODE = 1;
-	static constexpr uint8_t FT_ENCODE = 128;
-	static constexpr uint8_t STR_ENCODE = 0;
-	static constexpr uint8_t VEC_ENCODE = 4;
-	static constexpr uint8_t LS_ENCODE = 4;
-	static constexpr uint8_t HT_ENCODE = 2;
-	static constexpr uint8_t INTVEC_ENCODE = 8;
-	static constexpr uint8_t RB_ENCODE = 32;
-	
+	static constexpr uint8_t LRU_BITS = sizeof(std::time_t) * 8;
+	static constexpr size_t  MAX_CLOCK =  (1 << 24) - 1;
+	static constexpr size_t CLOCK_RESLUTION = 1000;
 	typedef std::size_t           size_type;
-	
+
+	virtual ~mbj() {};
+	virtual string type_name() const {return "mbj";}
+    virtual size_t size() const
+    {return std::numeric_limits<size_t>::max();}
+
+	void update_lru() const
+		{
+			_lru = std::time(nullptr);
+		}
 private:
-	unsigned _type:4;
-	unsigned _encode:4;
-	unsigned _lru:LRU_BITS;
-
-	std::shared_ptr<void*> _content;
-public:
-	mbj() {}
-	mbj(const std::string &str);
-	mbj(std::string &&str);
-	mbj(int64_t val);
-	mbj(long double val);
-
-	void create_vector();
-	void create_list();
+	mutable std::time_t _lru = std::time(nullptr);
 };
+
 NAMESPACE_END(monoco)
 #endif  // __MBJ_HPP_

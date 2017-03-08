@@ -1,0 +1,187 @@
+#include <memory>
+#include <vector>
+#include <boost/system/error_code.hpp>
+#include "config.hpp"
+#include "mzset.hpp"
+#include "mbj.hpp"
+
+NAMESPACE_BEGIN(monoco)
+
+NAMESPACE_BEGIN( )
+
+
+using std::shared_ptr;
+using namespace errs;
+using std::pair;
+
+typedef shared_ptr<mbj> obp_t;
+
+errs::err_code
+zadd(obp_t op, const std::vector<string>& args)
+{
+	if (args.size() % 2) {
+		errs::error("Invalid argument");
+		return make_err(errs::invalid_argument);
+	}
+		
+	auto ptr = std::dynamic_pointer_cast<zset>(op);
+	if (ptr == nullptr) {
+		errs::error("Only zset can not do zadd!");
+		return make_error_code(errs::invalid_argument);
+	}
+
+	std::vector<pair<string, long double>> inserteds;
+
+	long double ld;
+	for (size_t i = 0; i != args.size(); ++i) {
+		if (i % 2) {
+			try {
+				ld = stold(args[i]);
+			}
+			catch (...)
+			{
+				error("Can't convert ", args[i] , "to float");
+				return make_err(errs::invalid_argument);
+			}
+			
+			inserteds.emplace_back(args[i - 1], ld);
+		}
+	}
+
+	for (auto && ele : inserteds)
+		ptr->insert(ele);
+
+	return make_err(errs::success);
+}
+
+std::size_t
+zcard(obp_t ptr)
+{
+	return ptr->size();
+}
+
+std::size_t
+zcount(obp_t ptr, string start, string finsh)
+{
+	auto zp = std::dynamic_pointer_cast<zset>(ptr);
+	
+	if (ptr == nullptr) {
+		errs::error("Only zset can do zcount");
+		return std::numeric_limits<size_t>::max();
+	}
+
+	long double start_d;
+	long double finsh_d;
+
+	try {
+	start_d = std::stold(start);
+	finsh_d = std::stod(finsh);
+	}
+	catch (...) {
+		error("Can not convert", start, " ", finsh, "to float");
+		return std::numeric_limits<size_t>::max();
+	}
+	
+	return zp->count(start_d, finsh_d);
+}
+
+template <typename CON>
+void zrange(obp_t obj, CON& con, string start, string finish)
+{
+	auto zp = std::dynamic_pointer_cast<zset>(obj);
+	
+	if (obj == nullptr) {
+		errs::error("Only zset can do zcount");
+		return ;
+	}
+
+	long double start_d;
+	long double finsh_d;
+
+	try {
+	start_d = std::stold(start);
+	finsh_d = std::stod(finish);
+	}
+	catch (...) {
+		error("Can not convert ", start, " ", finish, " to float");
+		return ;
+	}
+
+	zp->get(con, start_d, finsh_d);
+}
+
+template <typename CON>
+void zrevrange(obp_t obj, CON& con, string start, string finish)
+{
+	auto zp = std::dynamic_pointer_cast<zset>(obj);
+	
+	if (obj == nullptr) {
+		errs::error("Only zset can do zcount");
+		return ;
+	}
+
+	long double start_d;
+	long double finsh_d;
+
+	try {
+	start_d = std::stold(start);
+	finsh_d = std::stod(finish);
+	}
+	catch (...) {
+		error("Can not convert ", start, " ", finish, " to float");
+		return ;
+	}
+
+	zp->get(con, start_d, finsh_d);
+	std::reverse(con.begin(), con.end());
+}
+
+std::size_t
+zrank(obp_t ptr, string key)
+{
+	auto zp = std::dynamic_pointer_cast<zset>(ptr);
+	
+	if (ptr == nullptr) {
+		errs::error("Only zset can do zcount");
+		return std::numeric_limits<size_t>::max();
+	}
+
+	return zp->rank(key);
+}
+
+std::size_t
+zrevrrank(obp_t ptr, string key)
+{
+	return ptr->size() - zrank(ptr, key);
+}
+
+void
+zrem(obp_t ptr, string key)
+{
+	auto zp = std::dynamic_pointer_cast<zset>(ptr);
+	
+	if (ptr == nullptr) {
+		errs::error("Only zset can do zrem");
+		return ;
+	}
+	zp->remove(key);
+}
+
+zset::value_type
+zscore(obp_t ptr, string key)
+{
+	auto zp = std::dynamic_pointer_cast<zset>(ptr);
+	auto res = std::numeric_limits<zset::value_type>::max();
+	
+	if (ptr == nullptr) {
+		errs::error("Only zset can do zscore");
+		return res;
+	}
+
+	return zp->get(key);
+}
+
+
+NAMESPACE_END()
+
+NAMESPACE_END(monoco)

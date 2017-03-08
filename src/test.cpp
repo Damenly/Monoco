@@ -4,46 +4,25 @@
 #include "mlist.hpp"
 #include "mht.hpp"
 #include "mset.hpp"
-#include "mzet.hpp"
+#include "mzset.hpp"
+#include "mstr.hpp"
+#include "mdict.cpp"
 #include <functional>
 #include <unordered_set>
+#include "db.hpp"
+#include "common.hpp"
 
 using namespace std;
 using namespace monoco;
+
 int
 main()
 {
+	vector<zl_entry> zl;
+	vector<string> ss = {string("2")};
+	utility::args_to_zls(ss.begin(), ss.end(), zl);
 
-	using namespace monoco::types;
-	
-	mset m;
-	_mzset<int, int> z;
-	z.size();
-	
-	vector<zl_entry> vz;
-	unordered_set<size_t> hs;
-	m.insert(1);
-//	m.remove(1);
-//	m.insert("2334", "string");
-	for (int i = 0; i != 10000; ++i) {
-		m.insert(i);
-		if (i % 3)
-			m.remove(to_string(i));
-	}
-	
-	m.getall(vz);
-	
-	for (int i = 0; i != vz.size(); ++i) {
-		auto ele = vz[i];
-
-		if (types::is_int(ele.encode))
-			cout << ele.to_s64() << endl;
-		if (types::is_uint(ele.encode))
-			cout << ele.to_u64() << endl;
-		if (ele.encode == types::M_STR)
-			cout << ele.safe_data<std::string>() << endl;
-
-	}
-
+	//errs::print(types::is_uint(zl[0].encode));
+	errs::print(zl[0].to_u64());
 }
 	

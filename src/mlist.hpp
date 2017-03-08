@@ -10,10 +10,11 @@
 #include "any.hpp"
 #include "utility.cpp"
 #include "zl_entry.hpp"
+#include "mbj.hpp"
 
 NAMESPACE_BEGIN(monoco)
 
-class mlist
+class mlist : public mbj
 {
 public:
 	static constexpr int VEC_TAG = 1;
@@ -41,6 +42,8 @@ private:
 	std::list<zl_entry> _list;
 	
 public:
+
+	virtual string type_name() const {return "mlist";}
 	
 	template <typename T>
 	void push_back(const T& val)
@@ -102,7 +105,8 @@ public:
 			}
 		}
 
-	std::size_t size() const {return std::max(_vec.size(), _list.size());}
+	virtual std::size_t size() const
+		{return std::max(_vec.size(), _list.size());}
 
 	template <typename T>
 	void insert(std::size_t pos, const T& val)
@@ -138,7 +142,28 @@ public:
 			else
 				_update(_list);
 		}
-	
+
+	template <typename T>
+	size_t
+	find(const T& val) const
+		{
+			
+			auto _index = [&val](auto & con)
+			{
+				zl_entry tmp = val;
+				auto iter = con.begin();
+				for (size_t i = 0; i != con.size(); ++i, ++iter)
+					if(*iter == tmp)
+						return i;
+
+				return types::size_t_max;
+			};
+
+			if (tag == VEC_TAG)
+				return _index(_vec);
+			else
+				return _index(_list);
+		}
 	
 	void erase(std::size_t pos)
 		{
@@ -189,7 +214,7 @@ public:
 };
 
 template <>
-void mlist::try_evlove<std::string>(const std::string& val)
+void mlist::try_evlove<string>(const string& val)
 {
 	if (_vec.size() > configs::mlist_max_len) {
 		_evlove();
@@ -198,6 +223,12 @@ void mlist::try_evlove<std::string>(const std::string& val)
 	if (val.size() > configs::mlist_max_size)
 		_evlove();
 }
+
+NAMESPACE_BEGIN(types)
+template <>
+string type_name<mlist>() {return "mlist";}
+
+NAMESPACE_END(types)
 
 NAMESPACE_END(monoco)
 

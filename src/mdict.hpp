@@ -36,6 +36,7 @@
 #include <random>
 #include <vector>
 #include "config.hpp"
+#include "common.hpp"
 
 NAMESPACE_BEGIN(monoco)
 
@@ -43,8 +44,9 @@ NAMESPACE_BEGIN(monoco)
 #define MDICT_ERR  1  // error 
 
 template <class IT, class DICT>
-struct mdict_iterator
+class mdict_iterator
 {
+public:
 	typedef typename IT::difference_type difference_type;
 	typedef typename IT::value_type value_type;
 	typedef typename IT::pointer pointer;
@@ -53,13 +55,15 @@ struct mdict_iterator
 	
 	mdict_iterator(IT real, DICT *dt):_real(real),_dt(dt) {}
 	mdict_iterator() {}
-	std::pair<const int,int>& operator*() {return *_real;}
+	auto operator*() {return *_real;}
 	auto operator*() const {return *_real;}
 	auto operator->() {return _real.operator->();}
+	auto operator->() const {return _real.operator->();}
 	auto operator=(mdict_iterator& oth)
 		{
 			_real = oth._real;
 			_dt = oth._dt;
+			return *this;
 		}
 	bool operator==(const mdict_iterator & oth) const
 		{return _real == oth._real && _dt == oth._dt;}
@@ -80,29 +84,31 @@ struct mdict_iterator
 			this->operator++();
 			return res;
 		}
-
-	
+private:
 	IT _real;
 	DICT* _dt;
 };
 
 template <class IT, class DICT>
-struct mdict_const_iterator : public std::forward_iterator_tag
+class mdict_const_iterator
 {
+public:
 	typedef typename IT::difference_type difference_type;
 	typedef typename IT::value_type value_type;
-	typedef typename IT::pointer pointer;
+	typedef typename IT::pointer   pointer;
 	typedef typename IT::reference reference;
-	typedef typename IT::iterator_category iterator_category;
+	typedef typename IT::category iterator_category;
 	
 	mdict_const_iterator(IT real, const DICT *dt):_real(real),_dt(dt) {}
 	mdict_const_iterator() {}
-	const std::pair<const int,int>& operator*() {return *_real;}
+	auto operator*() {return *_real;}
 	auto operator*() const {return *_real;}
 	auto operator->() {return _real.operator->();}
+	auto operator->() const {return _real.operator->();}
+
 	bool operator==(const mdict_const_iterator & oth) const
 		{return _real == oth._real && _dt == oth._dt;}
-	bool operator!=(const mdict_const_iterator & oth)
+	bool operator!=(const mdict_const_iterator & oth) const
 		{return !operator==(oth);}
 	
 	mdict_const_iterator& operator++()
@@ -120,6 +126,7 @@ struct mdict_const_iterator : public std::forward_iterator_tag
 			return res;
 		}
 	
+private:
 	IT _real;
 	const DICT* _dt;
 };
@@ -134,23 +141,22 @@ template<
 class mdict
 {
 public:
-//	typedef mdict<Key, T, Hash, KeyEqual, KeyEqual, Allocator>  _self;
+	typedef mdict<Key, T, Hash, KeyEqual, Allocator>  _self;
 	typedef std::unordered_map<Key, T, Hash, KeyEqual, Allocator> Htable;
 	typedef typename Htable::key_type           key_type;
 	typedef T                                   value_type;
 	typedef std::pair<const Key, T>             pair_type;
 	typedef typename Htable::size_type          size_type;
 	typedef typename Htable::allocator_type     allocator_type;
-	typedef mdict_iterator<typename Htable::iterator, mdict>
+	typedef mdict_iterator<typename Htable::iterator, _self>
 	                                            iterator;
-	typedef mdict_const_iterator<typename Htable::const_iterator, mdict>
+	typedef mdict_const_iterator<typename Htable::const_iterator, _self>
 	                                            const_iterator;
 
 	friend iterator;
 	friend const_iterator;
 	
 	mdict() {}
-	mdict(void *privdata);
 	~mdict() {};
 		
 	iterator random();
@@ -166,7 +172,7 @@ public:
 	void continue_hash();
 	
 	int rehash_step(size_type);
-        int insert(const key_type& key,
+	void insert(const key_type& key,
 		   const value_type& value);
 	int insert_assign(const key_type& key,
 			  const value_type& value);
@@ -178,23 +184,15 @@ public:
 		    const value_type& value);
 	void erase(const key_type& key);
 	iterator begin();
-//	const_iterator cbegin() {return begin();}
-//	const_iterator cbegin() const {return begin();}
 	const_iterator begin() const;
-//	const_iterator cend() const {return end();}
 	iterator end() {return iterator(_ht[1].end(), this);}
 	const_iterator end() const {return const_iterator(_ht[1].end(), this);}
 
 	static size_type next_size(size_type sz);
 	static constexpr size_type init_sz = 4;
-//	using Htable::v
-//	using Htable::value_type;
   
 private:
-	void  *_privdata = nullptr;
 	Htable _ht[2];
-	//ssize_t _rehash_idx = -1;          // if -1 means is not rehasing
-	size_type _iter_nums = 0;   //num of iterators
 	bool _can_resize = true;
 	bool _is_rehashing = false;
 public:

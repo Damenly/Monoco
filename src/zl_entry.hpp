@@ -6,10 +6,11 @@
 #include "config.hpp"
 #include "any.hpp"
 #include "common.hpp"
+#include "mbj.hpp"
 
 NAMESPACE_BEGIN(monoco)
 
-struct zl_entry
+struct zl_entry : public mbj
 {
 	any _content;
 	std::size_t encode = 0;
@@ -21,13 +22,21 @@ struct zl_entry
 			_content = other._content;
 		}
 	/*
+	zl_entry& operator=(const zl_entry& other)
+		{
+			encode = other.encode;
+			_content = other._content;
+			return *this;
+		}
+	*/
+	/*
 	zl_entry(zl_entry&& other)
 		{
 			std::swap(_content, other._content);
 			std::swap(encode, other.encode);
 		}
 	*/
-	~zl_entry() {}
+	virtual ~zl_entry() {}
 
 	bool empty() const {return _content.empty();}
 
@@ -45,7 +54,7 @@ struct zl_entry
 		}
 		
 	template <class T>
-	auto safe_data() const
+	T safe_data() const
 		{
 			return any_cast<T>(_content);
 		}
@@ -60,13 +69,29 @@ struct zl_entry
 		{
 			if (other.encode != encode)
 				return false;
-			if (types::is_int(encode))
+			if (types::is_int(encode)) {
 				return to_s64() == other.to_s64();
+			}
 			if (types::is_uint(encode))
 				return to_u64() == other.to_u64();
 			if (types::M_STR == encode)
 				return safe_data<std::string>()
 					== other.safe_data<std::string>();
+
+			return false;
+		}
+
+	bool operator<(const zl_entry& other) const
+		{
+			if (other.encode != encode)
+				return false;
+			if (types::is_int(encode))
+				return to_s64() < other.to_s64();
+			if (types::is_uint(encode))
+				return to_u64() < other.to_u64();
+			if (types::M_STR == encode)
+				return safe_data<std::string>()
+					< other.safe_data<std::string>();
 
 			return false;
 		}
@@ -89,6 +114,7 @@ struct zl_entry
 	
 	int64_t to_s64() const;
 	uint64_t to_u64() const;
+	long double to_ld() const;
 };
 
 int64_t zl_entry::to_s64() const
@@ -107,9 +133,9 @@ int64_t zl_entry::to_s64() const
 
 uint64_t zl_entry::to_u64() const
 {
-	uint64_t res = UINT64_MAX;
+	uint64_t res = UINT64_MAX; 
 	if(encode == types::M_UINT8)
-		res = safe_data<uint8_t>();
+		res = unsigned(safe_data<uint8_t>());
 	else if(encode == types::M_UINT16)
 		res = safe_data<uint16_t>();
 	else if(encode == types::M_UINT32)
@@ -118,6 +144,32 @@ uint64_t zl_entry::to_u64() const
 		res = safe_data<uint64_t>();
 	return res;
 }
+
+long double zl_entry::to_ld() const
+{
+	long double res = std::numeric_limits<long double>::max();
+	if(encode == types::M_FT)
+		res = safe_data<float>();
+	else if(encode == types::M_DB)
+		res = safe_data<double>();
+	else if(encode == types::M_LD)
+		res = safe_data<long double>();
+	return res;
+}
+
+std::ostream & operator<<(std::ostream & os, const zl_entry & ze)
+{
+	if (types::is_int(ze.encode))
+		os << ze.to_s64();
+	if (types::is_uint(ze.encode))
+		os << ze.to_u64();
+	if (types::is_float(ze.encode))
+		os << ze.to_ld();
+	if (types::M_STR == ze.encode)
+		os << ze.to_string();
+	return os;
+}
+
 
 NAMESPACE_END(monoco)
 
