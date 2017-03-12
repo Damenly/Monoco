@@ -30,17 +30,47 @@
 #ifndef __CONFIG_MONOCO_
 #define __CONFIG_MONOCO_
 
-#define DEBUG_M
+//#define DEBUG_M
 
 #include <string>
+#include <cctype>
 
 #ifdef DEBUG_M
 #include <iostream>
+using namespace std;
 #endif
 
 #define NAMESPACE_BEGIN(name) namespace name {
 
-typedef std::string mstr;
 #define NAMESPACE_END(name) }
+
+NAMESPACE_BEGIN(configs)
+
+static std::size_t mzset_max_size = 64;
+static std::size_t mzset_max_len = 2 << 8;
+static std::size_t mset_max_size = 64;
+static std::size_t mset_max_len = 2 << 8;
+static std::size_t mht_max_size = 64;
+static std::size_t mht_max_len = 2 << 8;
+static std::size_t mlist_max_size = 64;
+static std::size_t mlist_max_len = 2 << 9;
+static std::size_t intvec_max_len = 2 << 8;
+
+static constexpr const char MONOCO[] = "Monoco";
+static constexpr double VERSION = 0.01;
+
+static std::string mdf_path = ".mdf";
+static std::string aof_path = ".aof";
+static size_t init_db_num = 16;
+
+static constexpr std::size_t OPCODE_EOF = UINT64_MAX;
+
+NAMESPACE_END(configs)
+
+NAMESPACE_BEGIN(monoco)
+
+typedef std::string string;
+
+NAMESPACE_END(monoco)
 
 #endif // __CONFIG_MONOCO_

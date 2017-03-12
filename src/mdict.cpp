@@ -1,4 +1,5 @@
 #include "mdict.hpp"
+#include "common.hpp"
 #include "utility.cpp"
 
 NAMESPACE_BEGIN(monoco)
@@ -118,25 +119,18 @@ __MDICT_TMP_
 void __MDICT__::clear()
 {
 	for(auto &a : _ht)
-		_ht.clear();
-	_iter_nums = 0;
-	_privdata = nullptr;
+		_ht->clear();
 }
 
 __MDICT_TMP_
-int 
+void
 __MDICT__::insert(const key_type& key,
 		  const value_type& val)
 {
-	if (find(key) != end())
-		return -EEXIST;
-	
 	if(is_rehashing())
 		_ht[1].insert(std::make_pair(key, val));
 	else
 		_ht[0].emplace(std::make_pair(key, val));
-       
-	return 0;
 }
 
 __MDICT_TMP_
@@ -213,7 +207,6 @@ __MDICT__::random() const
 	std::advance(iter, pos);
 	return iter;
 }
-
 
 NAMESPACE_END(monoco)
 

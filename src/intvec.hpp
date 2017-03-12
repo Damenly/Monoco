@@ -59,9 +59,6 @@ public:
 	
 	size_type size() const;
 	int64_t random() const;
-	void add(int16_t val);
-	void add(int32_t val);
-	void add(int64_t val);
 	void remove(int64_t val);
 private:
 	void *_vec = nullptr;
@@ -83,6 +80,12 @@ public:
 	template <class T>
 	void get(size_type pos, T* val_ret) const;
 	int64_t get(size_type pos) const;
+	
+	template <class T>
+	void add (const T& val);
+
+	template <class T, class A>
+	void _add (const T& val);
 };
 
 NAMESPACE_END(monoco)

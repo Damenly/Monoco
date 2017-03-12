@@ -3,6 +3,7 @@
 #include "config.hpp"
 #include "intvec.hpp"
 #include "utility.cpp"
+#include "common.hpp"
 
 NAMESPACE_BEGIN(monoco)
 
@@ -40,45 +41,46 @@ intvec::_evolve(encode_type new_code)
 	_encode = new_code;
 }
 
-void
-intvec::add(int16_t val)
+template <class T>
+void intvec::add(const T& val)
 {
+	using namespace monoco::utility;
+	if (_encode == INTVEC_ENC_INT64) {
+		_add<T, int64_t>(val);
+		return ;
+	}
+
+	if (_encode == INTVEC_ENC_INT32) {
+	    if (hash_type(val) == types::M_INT64) {
+			_evolve(INTVEC_ENC_INT64);
+			_add<T, int64_t>(val);
+	    }
+	    else {
+		    _add<T, int32_t>(val);
+		    return ;
+	    }
+	}
+
 	if (_encode == INTVEC_ENC_INT16) {
-		auto vec = reinterpret_cast<std::vector<int16_t>*>(_vec);
-		vec->push_back(val);
-	} else if (_encode == INTVEC_ENC_INT32) {
-		auto vec = reinterpret_cast<std::vector<int32_t>*>(_vec);
-		vec->push_back(val);
-	} else {
-		auto vec = reinterpret_cast<std::vector<int64_t>*>(_vec);
-		vec->push_back(val);
+		if (hash_type(val) == types::M_INT64) {
+			_evolve(INTVEC_ENC_INT64);
+			_add<T, int64_t>(val);
+	    }
+		else if (hash_type(val) == types::M_INT32){
+			_evolve(INTVEC_ENC_INT32);
+			_add<T, int32_t>(val);
+		}
+	    else {
+		    _add<T, int16_t>(val);
+	    }
 	}
 }
 
-void
-intvec::add(int32_t val)
+template <typename T, typename VECT>
+void intvec::_add(const T& val)
 {
-	if (_encode == INTVEC_ENC_INT16) {
-		_evolve(INTVEC_ENC_INT32);
-		auto vec = reinterpret_cast<std::vector<int32_t>*>(_vec);
-		vec->push_back(val);
-	} else if (_encode == INTVEC_ENC_INT16) {
-		auto vec = reinterpret_cast<std::vector<int32_t>*>(_vec);
-		vec->push_back(val);
-	} else {
-		auto vec = reinterpret_cast<std::vector<int64_t>*>(_vec);
-		vec->push_back(val);
-	}
-}
-
-void
-intvec::add(int64_t val)
-{
-	if (_encode != INTVEC_ENC_INT64) 
-		_evolve(INTVEC_ENC_INT64);
-
-	auto vec = reinterpret_cast<std::vector<int64_t>*>(_vec);
-	vec->push_back(val);
+	auto vecp = _typed_vec<VECT>();
+	vecp->insert(std::upper_bound(vecp->begin(), vecp->end(), val), val);
 }
 
 template <class T>
@@ -117,12 +119,14 @@ intvec::get(size_type pos, T* val_ret) const
 	auto vec = _typed_vec<T>();
 	*val_ret = *(vec->begin() + pos);
 }
+
 int64_t
 intvec::random() const
 {
 	auto pos = random_machine::gen_uint(0, size() - 1);
 	return get(pos);
 }
+
 int64_t
 intvec::get(size_type pos) const
 {
@@ -181,4 +185,5 @@ intvec::size() const
 	}
 	return 0;
 }
+
 NAMESPACE_END(monoco)
