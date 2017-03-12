@@ -53,7 +53,7 @@ private:
 		}
 		
 public:
-	virtual string type_name() const { return "zset"; }
+	
 	
 	virtual std::size_t size() const
 		{
@@ -217,6 +217,7 @@ class zset : public mzset<string, long double>, public mbj
 {
 public:
 	virtual size_t size() const {return mzset::size();}
+	virtual string type_name() const { return "zset";}
 	virtual ~zset(){};
 };
 

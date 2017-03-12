@@ -18,11 +18,8 @@ using namespace monoco;
 int
 main()
 {
-	vector<zl_entry> zl;
-	vector<string> ss = {string("2")};
-	utility::args_to_zls(ss.begin(), ss.end(), zl);
-
-	//errs::print(types::is_uint(zl[0].encode));
-	errs::print(zl[0].to_u64());
+	string s;
+	errs::print(s, 1, "2", 3, 4, 5, 6);
+	cout << s;
 }
 	

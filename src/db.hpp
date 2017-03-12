@@ -27,7 +27,7 @@ public:
 	typedef expr_type::value_type                  ttl_type;
 	typedef dict_type::key_type                    key_type;
 	typedef dict_type::value_type                  value_type;
-//private:
+private:
 	
 	std::shared_ptr<dict_type> _dict = nullptr;
 	std::shared_ptr<expr_type> _exprs = nullptr;
@@ -45,16 +45,31 @@ public:
 
 	size_t empty() const {return _dict == nullptr;}
 
-	void remove(const key_type& key)
+	int remove(const key_type& key)
 		{
 			_dict->erase(key);
+
+			auto iter = _dict->find(key);
+			if (iter != _dict->end()) {
+				_dict->erase(key);
+				return 1;
+			}
+			else {
+				return -1;
+			}
 		}
+
+	void clear()
+		{
+			_dict->clear();
+			_exprs->clear();
+		}
+   
 	
 	string type(const key_type& key) const
 		{
 			auto iter = _dict->find(key);
 			if (iter != _dict->end()) {
-				//iter->first->uopda
 				return iter->second->type_name();
 			}
 			else {
@@ -93,7 +108,6 @@ public:
 		{
 			auto iter = _dict->find(key);
 			if (iter == _dict->end()) {
-				errs::error(key, "not found");
 				return nullptr;
 			}
 			
@@ -117,7 +131,6 @@ public:
 
 			auto ptr = find_cast<mset>(key);
 			if (ptr == nullptr) {
-				errs::error("error type");
 				return -1;
 			}
 
@@ -142,7 +155,6 @@ public:
 		{
 			auto ptr = find_cast<mset>(key);
 			if (ptr == nullptr) {
-				errs::error("wrong type");
 				return -1;
 			}
 			ptr->getall(con);
@@ -238,7 +250,6 @@ public:
 		{
 			auto ptr = find_cast<zl_entry>(key);
 			if (ptr == nullptr && ptr->encode == types::M_STR) {
-				errs::error("only string can do strlen");
 				return types::size_t_max;
 			}
 			
@@ -266,7 +277,6 @@ public:
 
 			auto ptr = std::static_pointer_cast<zl_entry>(iter->second);
 			if (ptr == nullptr) {
-				errs::error("wrong type");
 				return -1;
 			}
 
@@ -287,7 +297,6 @@ public:
 
 			auto ptr = std::static_pointer_cast<zl_entry>(iter->second);
 			if (ptr == nullptr || ptr->encode != types::M_STR) {
-				errs::error("wrong type");
 				return -1;
 			}
 			
@@ -301,7 +310,6 @@ public:
 		{
 			auto ptr = find_cast<zl_entry>(key);
 			if (ptr == nullptr) {
-				errs::error("Do get on single object");
 				return zl_entry();
 			}
 
@@ -313,7 +321,6 @@ public:
 		{
 			auto ptr = find_cast<zl_entry>(key);
 			if (ptr == nullptr) {
-				errs::error("Do get on single object");
 				return -1;
 			}
 
@@ -339,7 +346,6 @@ public:
 				return 1;
 			}
 			
-			errs::error(key, "type error");
 			return -1;
 		}
 
@@ -382,7 +388,6 @@ public:
 
 			auto ptr = find_cast<zset>(key);
 			if (ptr == nullptr) {
-				errs::error("error type");
 				return -1;
 			}
 
@@ -458,7 +463,6 @@ public:
 		{
 			auto ptr = find_cast<zset>(key);
 			if (ptr == nullptr) {
-				errs::error(key, "not found");
 				return -1;
 			}
 			ptr->remove(pos);
@@ -604,7 +608,6 @@ public:
 		{
 			auto ptr = find_cast<mlist>(key);
 			if (ptr == nullptr) {
-				errs::error("only list can do lindex");
 				return zl_entry();
 			}
 
@@ -618,13 +621,11 @@ public:
 		{
 			auto ptr = find_cast<mlist>(key);
 			if (ptr == nullptr) {
-				errs::error("only list can do linsert");
 				return -1;
 			}
 
 			auto pos = ptr->find(t);
 			if (pos == types::size_t_max) {
-				errs::error(t, "not found");
 				return -1;
 			}
 
@@ -639,7 +640,6 @@ public:
 		{
 			auto iter = _dict->find(key);
 			if (iter == _dict->end()) {
-				errs::error(key, "not found");
 				return types::size_t_max;
 			}
 
@@ -651,12 +651,11 @@ public:
 		{
 			auto ptr = find_cast<mlist>(key);
 			if (ptr == nullptr) {
-				errs::error("only list can do lpop");
+
 				return zl_entry();
 			}
 
 			if (ptr->size() == 0) {
-				errs::error(key, " is empty");
 				return -1;
 			}
 			
@@ -678,7 +677,6 @@ public:
 			
 			auto ptr = find_cast<mlist>(key);
 			if (ptr == nullptr) {
-				errs::error("only list can do lpush");
 				return -1;
 			}
 
@@ -692,12 +690,11 @@ public:
 		{
 			auto ptr = find_cast<mlist>(key);
 			if (ptr == nullptr) {
-				errs::error("only list can do rpop");
+
 				return zl_entry();
 			}
 
 			if (ptr->size() == 0) {
-				errs::error(key, " is empty");
 				return -1;
 			}
 			zl_entry res;
@@ -715,7 +712,6 @@ public:
 		{
 			auto ptr = find_cast<mlist>(key);
 			if (ptr == nullptr) {
-				errs::error("only list can do rpush");
 				return -1;
 			}
 
@@ -733,13 +729,13 @@ public:
 			
 			auto ptr = find_cast<mlist>(key);
 			if (ptr == nullptr) {
-				errs::error("only list can do rpush");
+
 				return -1;
 			}
 
 			auto ptr2 = find_cast<mlist>(key2);
 			if (ptr2 == nullptr) {
-				errs::error(key2, "is not a list");
+
 				return -1;
 			}
 
@@ -757,13 +753,11 @@ public:
 			
 			auto ptr = find_cast<mlist>(key);
 			if (ptr == nullptr) {
-				errs::error("only list can do rpush");
 				return -1;
 			}
 
 			auto ptr2 = find_cast<mlist>(key2);
 			if (ptr2 == nullptr) {
-				errs::error(key2, "is not a list");
 				return -1;
 			}
 			
@@ -779,7 +773,6 @@ public:
 		{
 			auto ptr = find_cast<mlist>(key);
 			if (ptr == nullptr) {
-				errs::error(key, "is not a list");
 				return -1;
 			}
 			if (r != types::size_t_max)
@@ -798,7 +791,6 @@ public:
 		{
 			auto ptr = find_cast<mlist>(key);
 			if (ptr == nullptr) {
-				errs::error(key, "is not a list");
 				return -1;
 			}
 
@@ -821,7 +813,6 @@ public:
 		{
 			auto ptr = find_cast<mlist>(key);
 			if (ptr == nullptr) {
-				errs::error(key, "is not a list");
 				return -1;
 			}
 
@@ -837,7 +828,6 @@ public:
 		{
 			auto ptr = find_cast<mlist>(key);
 			if (ptr == nullptr) {
-				errs::error(key, "is not a list");
 				return -1;
 			}
 

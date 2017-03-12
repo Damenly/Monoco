@@ -56,6 +56,8 @@ static std::size_t mlist_max_len = 2 << 9;
 static std::size_t intvec_max_len = 2 << 8;
 
 static std::string aof_path = "~/mdb.aof";
+static size_t init_db_num = 16;
+
 NAMESPACE_END(configs)
 
 NAMESPACE_BEGIN(monoco)

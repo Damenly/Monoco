@@ -118,6 +118,16 @@ args_to_zls(std::vector<string>::iterator first,
 		auto arg = *first;
 		std::advance(first, 1);
 
+		if (arg.size() >= 3 &&
+			((arg.front() == '"' && arg.back() == '"') ||
+			 (arg.front() == '\'' && arg.back() == '\'')))
+		{
+			arg.erase(0, 1);
+			arg.erase(arg.size() - 1);
+			res.push_back(zl_entry(arg));
+			continue;
+		}
+		
 		if(try_convert<int16_t>(res, arg) == 0) continue;
 		if(try_convert<int32_t>(res, arg) == 0) continue;
 		if(try_convert<int64_t>(res, arg) == 0) continue;

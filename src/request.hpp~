@@ -1,0 +1,17 @@
+#ifndef _REQUEST_HPP
+#define _REQUEST_HPP
+
+#include <string>
+#include <vector>
+#include "config.hpp"
+
+NAMESPACE_BEGIN(monoco)
+
+struct request
+{
+  std::string cmd;
+};
+
+NAMESPACE_END(monoco)
+
+#endif

@@ -21,6 +21,8 @@ struct zl_entry : public mbj
 			encode = other.encode;
 			_content = other._content;
 		}
+	
+	virtual string type_name() const {return "zl_entry";}
 	/*
 	zl_entry& operator=(const zl_entry& other)
 		{

@@ -35,6 +35,7 @@
 #include <typeindex>
 #include <functional>
 #include <limits>
+#include <sstream>
 
 #include <boost/system/error_code.hpp>
 
@@ -54,21 +55,25 @@ void error(const T& msg)
 template <typename T, typename... Args>
 void error(const T& arg, Args... args)
 {
-	std::cerr << arg << " ";
+	std::cerr << arg;
 	error(args...);
 }
 
 template <typename T>
-void print(const T& msg)
+void print(string &str, const T& msg)
 {
-	std::cout << msg << std::endl;
+	std::stringstream ss;
+	ss << msg << "\n";
+	str.append(ss.str());
 }
 
 template <typename T, typename... Args>
-void print(const T& arg, Args... args)
+void print(string & str, const T& arg, Args... args)
 {
-	std::cout << arg << " ";
-	print(args...);
+	std::stringstream ss;
+	ss << arg;
+	str.append(ss.str());
+	print(str, args...);
 }
 
 typedef boost::system::error_code err_code;
