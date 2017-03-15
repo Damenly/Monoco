@@ -1,16 +1,11 @@
 #include <iostream>
+
 #include <memory>
 #include <string>
-#include "mlist.hpp"
-#include "mht.hpp"
-#include "mset.hpp"
-#include "mzset.hpp"
-#include "mstr.hpp"
-#include "mdict.cpp"
 #include <functional>
 #include <unordered_set>
-#include "db.hpp"
-#include "common.hpp"
+
+#include "cmds.cpp"
 #include "server.hpp"
 
 using namespace monoco;
@@ -20,10 +15,10 @@ int
 main(int argc, char** argv)
 {
 	try {
-	server s("127.0.0.1", argv[1]);
-	s.run();
+		auto s = make_shared<server>("127.0.0.1", argv[1]);
+		s->run();
 	}
-	catch(...) {}
+	catch(exception &e) { cout <<e.what();}
 }
 
 

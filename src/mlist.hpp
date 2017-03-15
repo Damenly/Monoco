@@ -4,10 +4,9 @@
 #include <cstring>
 #include <vector>
 #include <list>
-#include <boost/any.hpp>
+
 #include "config.hpp"
 #include "common.hpp"
-#include "any.hpp"
 #include "utility.cpp"
 #include "zl_entry.hpp"
 #include "mbj.hpp"
@@ -217,6 +216,7 @@ public:
 			else
 				_write(_list);
 
+			os.flush();
 			return os;
 		}
 
@@ -224,12 +224,7 @@ public:
 	read_from(std::ifstream& is, boost::crc_32_type& crc)
 		{
 			size_t holder;
-			fs::read_from(is, holder, crc);
-			if (holder != types::hash_idx<mlist>()) {
-				errs::log("read mlist error");
-				return is;
-			}
-
+		
 			// read size
 			fs::read_from(is, holder, crc);
 
@@ -270,8 +265,11 @@ void mlist::try_evlove<string>(const string& val)
 }
 
 NAMESPACE_BEGIN(types)
+
 template <>
 string type_name<mlist>() {return "mlist";}
+
+static const size_t M_LS = types::hash_idx<mlist>();
 
 NAMESPACE_END(types)
 

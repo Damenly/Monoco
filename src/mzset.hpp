@@ -10,19 +10,19 @@
 #include "common.hpp"
 #include "config.hpp"
 #include "mbj.hpp"
+#include "file.hpp"
 
 NAMESPACE_BEGIN(monoco)
 
-template <typename KEY, typename VAL>
-class mzset
+class zset : public mbj
 {
 public:
-	typedef KEY          key_type;
-	typedef VAL          value_type;
+	typedef string               key_type;
+	typedef long double          value_type;
 	
 	typedef boost::bimap
 	<
-		boost::bimaps::set_of<KEY>,
+		boost::bimaps::set_of<key_type>,
 		boost::bimaps::multiset_of<value_type>
 	> mbimap;
 	
@@ -54,6 +54,8 @@ private:
 		
 public:
 	
+	virtual string type_name() const { return "zset";}
+	virtual ~zset(){};
 	
 	virtual std::size_t size() const
 		{
@@ -211,14 +213,62 @@ public:
 					}
 			}
 		}
-};
 
-class zset : public mzset<string, long double>, public mbj
-{
-public:
-	virtual size_t size() const {return mzset::size();}
-	virtual string type_name() const { return "zset";}
-	virtual ~zset(){};
+	std::ofstream&
+	write_to(std::ofstream& os, boost::crc_32_type& crc) const
+		{
+			size_t holder;
+			holder = types::hash_idx<zset>();
+			fs::write_to(os, holder, crc);
+
+			holder = size();
+			fs::write_to(os, holder, crc).flush();
+			
+			if (tag == VEC_TAG) {
+				for (auto && ele : _vec) {
+					fs::write_to<string>(os, ele.first, crc);
+					fs::write_to(os, ele.second, crc);
+				}
+			}
+			else {
+				for (auto && ele : _map) {
+					fs::write_to(os, ele.get_left(), crc);
+					fs::write_to(os, ele.get_right(), crc);
+				}
+			}
+			os.flush();
+			return os;
+		}
+
+	virtual std::ifstream&
+	read_from(std::ifstream& is, boost::crc_32_type& crc)
+		{
+			size_t holder;
+
+			// read size
+			fs::read_from(is, holder, crc);
+			
+			for (size_t i = 0; i != holder; ++i) {
+				
+				if (tag == VEC_TAG) {
+					std::pair<key_type, value_type> pr;
+					fs::read_from(is, pr.first, crc);
+					fs::read_from(is, pr.second, crc);
+					
+					_vec.push_back(pr);
+				}
+				else {
+					string str;
+					long double ld;
+					fs::read_from(is, str, crc);
+					fs::read_from(is, ld, crc);
+
+					_map.insert(position(str, ld));
+				}
+			}
+		
+			return is;
+		}
 };
 
 NAMESPACE_BEGIN(types)

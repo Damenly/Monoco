@@ -14,9 +14,24 @@ public:
 	mstr(const char* cstr): string(cstr) {}
 	mstr(const string& str): string(str) {}
 	mstr(const mstr& other): string(other) {}
-	
-	virtual string type_name() const {return "msrt";}
+
+	virtual string type_name() const {return "mstr";}
 	virtual std::size_t size() const {return string::size();}
+	
+	virtual std::ofstream&
+	write_to(std::ofstream& os, boost::crc_32_type& crc) const
+		{
+			fs::write_to(os, static_cast<string>(*this), crc);
+			return os;
+		}
+
+	virtual std::ifstream&
+	read_from(std::ifstream& is, boost::crc_32_type& crc)
+		{
+			fs::read_from(is, *dynamic_cast<string*>(this), crc);
+			return is;
+		}
+	
 };
 
 
@@ -29,7 +44,7 @@ namespace std {
 	{
 		std::size_t operator()(const monoco::mstr& str) const
 			{
-				return 1;
+				return hash<string>{}(*static_cast<const string*>(&str));
 			}
 	};
 }

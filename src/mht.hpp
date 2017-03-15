@@ -141,18 +141,6 @@ public:
 			}
 		}
 
-	/*
-	template <typename CON, typename MEM_FN>
-	void getall(CON &con, MEM_FN mem_fun)
-		{
-			if (tag == VEC_TAG)
-				for(auto &&ele : _vec)
-					std::bind(mem_fun(con, ele.second);
-			else
-				for(auto &&ele : _map)
-					mem_fun(con, ele.second);
-		}
-	*/
 	template <typename CON>
 	void getall(CON &con)
 		{
@@ -162,6 +150,65 @@ public:
 			else
 				for(auto &&ele : _map)
 					con.push_back(ele);
+		}
+
+	virtual
+	std::ofstream&
+	write_to(std::ofstream& os, boost::crc_32_type& crc) const
+		{
+			size_t holder;
+			holder = types::hash_idx<mht>();
+			fs::write_to(os, holder, crc);
+
+			holder = size();
+			fs::write_to(os, holder, crc).flush();
+			
+			if (tag == VEC_TAG) {
+				for (auto && ele : _vec) {
+					fs::write_to(os, ele.first, crc);
+					ele.second.write_to(os, crc);
+				}
+			}
+			else {
+				for (auto && ele : _map) {
+					fs::write_to(os, ele.first, crc);
+					ele.second.write_to(os, crc);
+				}
+			}
+			os.flush();
+			return os;
+		}
+
+	virtual std::ifstream&
+	read_from(std::ifstream& is, boost::crc_32_type& crc)
+		{
+			size_t holder;
+			
+			// read size
+			fs::read_from(is, holder, crc);
+
+			if (tag == VEC_TAG) {
+				std::pair<key_type, value_type> pr;
+				for (size_t i = 0; i != holder; ++i) {
+					fs::read_from(is, pr.first, crc);
+					pr.second.read_from(is, crc);
+					
+					_vec.push_back(pr);
+				}
+			}
+			else {
+				string str;
+				zl_entry ze;
+
+				for (size_t i = 0; i != holder; ++i) {
+					fs::read_from(is, str, crc);
+					ze.read_from(is, crc);
+
+					_map.emplace(str, ze);
+				}
+			}
+			
+			return is;
 		}
 };
 
@@ -179,7 +226,7 @@ NAMESPACE_BEGIN(types)
 template <>
 string type_name<mht>() {return "mht";}
 
-static const size_t M_HT = std::hash<type_index>{}(type_index(typeid(mht)));
+static const size_t M_HT = hash_idx<mht>();
 
 NAMESPACE_END(types)
 	

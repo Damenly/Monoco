@@ -1,4 +1,4 @@
-#ifndef _M_FILE_HPP
+ #ifndef _M_FILE_HPP
 #define _M_FILE_HPP
 
 #include <fstream>
@@ -18,10 +18,23 @@ using namespace boost::filesystem;
 using namespace boost::system;
 
 template <typename T>
-std::ofstream& write_to(std::ofstream & os, T& val, boost::crc_32_type& crc)
+std::ofstream& write_to(std::ofstream & os,const T& val, boost::crc_32_type& crc)
 {
-	os.write(reinterpret_cast<char *>(&val), sizeof(val));
+	os.write(reinterpret_cast<const char *>(&val), sizeof(val));
 	crc.process_bytes(&val, sizeof(val));
+	
+	return os;
+}
+
+template <>
+std::ofstream&
+write_to<string>(std::ofstream & os, const string& val, boost::crc_32_type& crc)
+{
+	size_t holder = val.size();
+	write_to(os, holder, crc);
+	
+	os.write(val.c_str(), val.size());
+	crc.process_bytes(val.c_str(), val.size());
 	
 	return os;
 }
@@ -32,6 +45,21 @@ std::ifstream& read_from(std::ifstream & is, T& val, boost::crc_32_type& crc)
 	is.read(reinterpret_cast<char *>(&val), sizeof(val));
 	crc.process_bytes(&val, sizeof(val));
 	
+	return is;
+}
+
+template <>
+std::ifstream&
+read_from<string>(std::ifstream & is, string& val, boost::crc_32_type& crc)
+{
+	size_t sz;
+	read_from(is, sz, crc);
+
+	auto buffer = std::shared_ptr<char>(new char[sz]);
+	is.read(buffer.get(), sz);
+	crc.process_bytes(buffer.get(), sz);
+
+	val = string(buffer.get(), buffer.get() + sz);
 	return is;
 }
 

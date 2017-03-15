@@ -4,20 +4,11 @@
 #include <string>
 #include <boost/any.hpp>
 #include "config.hpp"
-#include "any.hpp"
 #include "common.hpp"
 #include "mbj.hpp"
 #include "file.hpp"
 
 NAMESPACE_BEGIN(monoco)
-
-template <size_t T>
-struct foo
-{
-	union {
-		char ptr[T];
-	};
-};
 
 struct zl_entry : public mbj
 {
@@ -66,6 +57,12 @@ struct zl_entry : public mbj
 	T* unsafe_data()
 		{
 			return reinterpret_cast<T*>(_content.get());
+		}
+
+	template <typename T>
+	const T* unsafe_data() const
+		{
+			return reinterpret_cast<const T*>(_content.get());
 		}
 
 	char* get() {return reinterpret_cast<char*>(_content.get());}
@@ -161,17 +158,16 @@ struct zl_entry : public mbj
 		}
 
 	virtual std::ifstream&
-	read_from(std::ifstream & is, crc_32_type& crc)
+	read_from(std::ifstream & is, boost::crc_32_type& crc)
 		{
 			size_t holder;
 			fs::read_from(is, holder, crc);
 			this->encode = holder;
 			
 			size_t sz;
-	
-			if (holder == types::M_STR) {
+			errs::error(holder);
+			if (holder == types::M_STR)
 				fs::read_from(is, sz, crc);
-			}
 			else if (holder == types::M_BOOL)
 				sz = sizeof(bool);
 			else if (holder == types::M_INT8 ||
@@ -189,7 +185,7 @@ struct zl_entry : public mbj
 			else if (holder == types::M_FT)
 				sz = sizeof(float);
 			else if (holder == types::M_DB)
-		sz = sizeof(double);
+				sz = sizeof(double);
 			else if (holder == types::M_LD)
 				sz = sizeof(long double);
 			else
@@ -207,7 +203,7 @@ struct zl_entry : public mbj
 			else {
 				this->_content = buffer;
 			}
-
+			
 			return is;
 		}
    
@@ -260,15 +256,25 @@ std::ostream & operator<<(std::ostream & os, const zl_entry & ze)
 {
 	if (types::is_int(ze.encode))
 		os << ze.to_s64();
-	if (types::is_uint(ze.encode))
+	else if (types::is_uint(ze.encode))
 		os << ze.to_u64();
-	if (types::is_float(ze.encode))
+	else if (types::is_float(ze.encode))
 		os << ze.to_ld();
-	if (types::M_STR == ze.encode)
+	else if (types::M_STR == ze.encode)
 		os << ze.to_string();
+	else {
+		for (size_t i = 0; i != ze.encode; ++i)
+			os << *(ze.unsafe_data<char>() + i);
+	}
 	return os;
 }
 
+
+NAMESPACE_BEGIN(types)
+
+static const size_t M_ZE = hash_idx<zl_entry>();
+
+NAMESPACE_END(monoco)
 
 NAMESPACE_END(monoco)
 

@@ -9,8 +9,9 @@
 
 #include "config.hpp"
 #include "common.hpp"
-#include "db.hpp"
 #include "utility.cpp"
+#include "server.hpp"
+#include "db.hpp"
 
 NAMESPACE_BEGIN(monoco)
 using std::vector;
@@ -49,19 +50,111 @@ handle_str(string& str)
 	}
 }
 
+template <typename T>
 int
-list_cmd(shared_ptr<mdb> db, vector<string>& args, string& reply)
+handle_cmds(std::shared_ptr<T> sess, vector<string>& args, string& reply)
 {
-	vector<zl_entry> zls;
+	if (args.empty())
+		return 0;
+	
+	if (sess == nullptr || sess->_server == nullptr) {
+		print(reply, "invalid arguments");
+		return -1;
+	}
 	
 	try {
-		if (args.size() >= 2)
-			handle_str(args[1]);
-	if (is_valid("flushall", 1, args, false)) {
-		db->clear();
+	vector<zl_entry> zls;
+	auto ser = sess->_server;
+
+	if (is_valid("resize", 2, args, false)) {
+		ser->resize(stoull(args[1]));
 		return 1;
 	}
 
+	if (is_valid("rmdb", 2, args, true)) {
+		if (args.size() > 3)
+			return -1;
+		
+		size_t start = std::stoull(args[1]);
+		size_t finsh = start + 1;
+		if (args.size() == 3)
+			finsh = std::stoull(args[2]);
+		return ser->remove_db(start, finsh);
+	}
+	
+	if (is_valid("passwd", 2, args, false)) {
+		ser->set_pwd(args[1]);
+		return 0;
+	}
+
+	if (is_valid("rawpwd", 2, args, false)) {
+		ser->set_rawpwd(args[1]);
+		return 1;
+	}
+
+	if (is_valid("cur", 1, args, false)) {
+		return sess->cur;
+	}
+
+	if (is_valid("size", 1, args, false)) {
+		return ser->size();
+	}
+	
+	if (is_valid("clear", 1, args, true)) {
+		if (args.size() == 1) {
+			ser->clear();
+		}
+		else {
+			auto pos = std::stoull(args[1]);
+			ser->clear(pos);
+		}
+		return 1;
+	}
+
+	if (is_valid("save", 1, args, false)) {
+		string s;
+		ser->backup();
+		return 0;
+	}
+
+	if (is_valid("save_aof", 1, args, false)) {
+		string s;
+		ser->backup_aof();
+		return 0;
+	}
+
+	if (is_valid("restore", 1, args, true)) {
+		if (args.size() >= 3)
+			return -1;
+		
+		if (args.size() == 1) {
+			ser->restore();
+			return 0;
+		}
+		
+		if (boost::iequals(args[1], "aof")) {
+			ser->restore_from_aof();
+			return 0;
+		}
+		if (boost::iequals(args[1], "mdf")) {
+			ser->restore_from_mdf();
+			return 0;
+		}
+		
+		return -1;
+	}
+	
+	if (is_valid("select", 2, args, false)) {
+		auto pos = stoull(args[1]);
+		if (pos >= ser->size())
+			throw std::runtime_error("error db position");
+		
+		sess->cur = pos;
+		return 1;
+	}
+
+	auto db = ser->_dbs.at(sess->cur);
+	
 	if (is_valid("remkey", 2, args, false)) {
 		db->remove(args[1]);
 		return 1;
@@ -329,7 +422,7 @@ list_cmd(shared_ptr<mdb> db, vector<string>& args, string& reply)
 				ps.push_back(p);
 			}
 		}
-
+		
 		return(db->zadd(args[1], ps));
 	}
 
@@ -397,7 +490,6 @@ list_cmd(shared_ptr<mdb> db, vector<string>& args, string& reply)
 
 	if (is_valid("hset", 4, args, false)) {
 		zls.clear();
-		print(reply, args[3]);
 		args_to_zls(args.begin() + 3, args.end(), zls);
 		return db->hset(args[1], args[2], zls[0]);
 	}
@@ -446,31 +538,6 @@ list_cmd(shared_ptr<mdb> db, vector<string>& args, string& reply)
 	}
 	print(reply, "Invalid arguments");
 	return -1;
-}
-
-int
-handle_cmds(shared_ptr<mdb> db, vector<string>& args,
-			string &reply)
-{
-	if (args.empty() || db == nullptr) {
-		print(reply, "invalid arguments");
-		return -1;
-	}
-	
-	try {
-		if (args.size() > 1)
-			if(args[1].front() == '\'' ||
-			   args[1].front() == '"') {
-				args[1].erase(0, 1);
-				args[1].erase(args[1].size() -1);
-			}
-	}
-	catch(...) {
-		print(reply, "invalid arguments");
-		return -1;
-	}
-
-	return list_cmd(db, args, reply);
 }
 
 NAMESPACE_END(monoco)

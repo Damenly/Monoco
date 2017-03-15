@@ -56,9 +56,14 @@ static std::size_t mlist_max_size = 64;
 static std::size_t mlist_max_len = 2 << 9;
 static std::size_t intvec_max_len = 2 << 8;
 
-static constexpr const char MONOCO[] = "Monoco";
-static constexpr double VERSION = 0.01;
+static const std::string MONOCO = "Monoco";
+static constexpr long double VERSION = 0.01;
 
+
+static int64_t cmd_aof_counts = 1;
+static int64_t backup_mdf_seconds = 60;
+static bool mdf_restore = false;
+static bool aof_restore = true;
 static std::string mdf_path = ".mdf";
 static std::string aof_path = ".aof";
 static size_t init_db_num = 16;

@@ -1,3 +1,6 @@
+#ifndef _MDICT_CPP
+#define _MDICT_CPP
+
 #include "mdict.hpp"
 #include "common.hpp"
 #include "utility.cpp"
@@ -210,7 +213,7 @@ __MDICT__::random() const
 
 NAMESPACE_END(monoco)
 
-
+#endif
 
 
 

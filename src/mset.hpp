@@ -127,7 +127,7 @@ public:
 			fs::write_to(os, holder, crc);
 
 			holder = size();
-			fs::write_to(os, holder, crc);
+			fs::write_to(os, holder, crc).flush();
 
 			auto _write = [&](auto & ls)
 				{
@@ -140,6 +140,7 @@ public:
 			else
 				_write(_set);
 
+			os.flush();
 			return os;
 		}
 
@@ -147,12 +148,7 @@ public:
 	read_from(std::ifstream& is, boost::crc_32_type& crc)
 		{
 			size_t holder;
-			fs::read_from(is, holder, crc);
-			if (holder != types::hash_idx<mset>()) {
-				errs::log("read mset error");
-				return is;
-			}
-
+			
 			// read size
 			fs::read_from(is, holder, crc);
 
@@ -179,7 +175,7 @@ NAMESPACE_BEGIN(types)
 template <>
 string type_name<mset>() {return "mstr";}
 
-static const size_t M_SET = std::hash<type_index>{}(type_index(typeid(mset)));
+static const size_t M_SET = types::hash_idx<mset>();
 
 NAMESPACE_END(types)
 
