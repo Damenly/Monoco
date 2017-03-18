@@ -3,7 +3,7 @@
 
 #include "mdict.hpp"
 #include "common.hpp"
-#include "utility.cpp"
+#include "utility.hpp"
 
 NAMESPACE_BEGIN(monoco)
 

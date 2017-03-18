@@ -16,6 +16,7 @@ NAMESPACE_BEGIN(fs)
 
 using namespace boost::filesystem;
 using namespace boost::system;
+using boost::system::error_code;
 
 template <typename T>
 std::ofstream& write_to(std::ofstream & os,const T& val, boost::crc_32_type& crc)

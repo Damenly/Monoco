@@ -7,7 +7,7 @@
 
 #include "config.hpp"
 #include "common.hpp"
-#include "utility.cpp"
+#include "utility.hpp"
 #include "zl_entry.hpp"
 #include "mbj.hpp"
 

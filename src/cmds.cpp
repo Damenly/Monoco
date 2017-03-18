@@ -9,7 +9,7 @@
 
 #include "config.hpp"
 #include "common.hpp"
-#include "utility.cpp"
+#include "utility.hpp"
 #include "server.hpp"
 #include "db.hpp"
 
@@ -71,6 +71,35 @@ handle_cmds(std::shared_ptr<T> sess, vector<string>& args, string& reply)
 		return 1;
 	}
 
+	if (is_valid("monitor", 1, args, false)) {
+		return ser->monitor(sess->_host, sess->_port);
+	}
+
+	if (is_valid("get_slaves", 1, args, false)) {
+		ser->get_slaves();
+		return 0;
+	}
+	
+	if (is_valid("add_slave", 1, args, false)) {
+		ser->add_slave(sess->_host, sess->_port);
+		return 0;
+	}
+
+	if (is_valid("send", 2, args, false)) {
+		string file_name;
+		if (boost::iequals("mdf", args[1]))
+			file_name = configs::mdf_path;
+		else if(boost::iequals("aof", args[1]))
+			file_name = configs::aof_path;
+		else if(boost::iequals("config", args[1]))
+			file_name = configs::config_path;
+		else
+			return -1;
+		
+		return ser->send_file(sess->_host, sess->_port,
+							 file_name);
+	}
+
 	if (is_valid("rmdb", 2, args, true)) {
 		if (args.size() > 3)
 			return -1;
@@ -88,7 +117,7 @@ handle_cmds(std::shared_ptr<T> sess, vector<string>& args, string& reply)
 	}
 
 	if (is_valid("rawpwd", 2, args, false)) {
-		ser->set_rawpwd(args[1]);
+		ser->set_pwd(args[1]);
 		return 1;
 	}
 
@@ -123,15 +152,7 @@ handle_cmds(std::shared_ptr<T> sess, vector<string>& args, string& reply)
 		return 0;
 	}
 
-	if (is_valid("restore", 1, args, true)) {
-		if (args.size() >= 3)
-			return -1;
-		
-		if (args.size() == 1) {
-			ser->restore();
-			return 0;
-		}
-		
+	if (is_valid("restore", 2, args, false)) {
 		if (boost::iequals(args[1], "aof")) {
 			ser->restore_from_aof();
 			return 0;
@@ -315,6 +336,7 @@ handle_cmds(std::shared_ptr<T> sess, vector<string>& args, string& reply)
 			ss << ze << " ";
 			reply.append(ss.str());
 		}
+		reply.append("\n");
 		return 0;
 	}
 
@@ -536,7 +558,6 @@ handle_cmds(std::shared_ptr<T> sess, vector<string>& args, string& reply)
 	catch (...) {
 		
 	}
-	print(reply, "Invalid arguments");
 	return -1;
 }
 

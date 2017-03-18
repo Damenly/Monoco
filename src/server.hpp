@@ -20,6 +20,7 @@
 #include "common.hpp"
 #include "config.hpp"
 #include "file.hpp"
+#include "passwd.hpp"
 
 NAMESPACE_BEGIN(monoco)
 
@@ -41,17 +42,17 @@ class session
 	: public std::enable_shared_from_this<session<T>>
 {
 public:
-	session(tcp::socket& socket, std::shared_ptr<T> ser)
-		: _socket(socket),
+	session(string host, short port, std::shared_ptr<T> ser)
+		: _host(host), _port(port),
 		  _server(ser)
 		{
-			ser->_dbs.size();
+			
 		}
 
 	void start()
 		{
 			if (login() != 0) {
-				_socket.close();
+				_server->get_client(_host, _port).close();
 				return ;
 			}
 				
@@ -80,16 +81,19 @@ public:
 				reply = std::to_string(ret);
 				reply.append("\n");
 			}
+
 			return ret;
 		}
 	
 	void do_read()
 		{
+			try{
 			auto self(this->shared_from_this());
-			_socket.async_read_some(boost::asio::buffer(_data),
-									[this, self](boost::system::error_code ec,
+			_server->get_client(_host, _port).async_read_some(boost::asio::buffer(_data),
+												  [this, self](boost::system::error_code ec,
 												 std::size_t length)
 									{
+										log(string(_data.data(), _data.data() + length));
 										int ret = this->handle_request(_data.data(),
 																	   _data.data() + length,
 																	   _reply);
@@ -104,15 +108,19 @@ public:
 											do_write();
 										}
 									});
+			} catch(...)
+			{
+				log("....");
+			}
 		}
 
 	void do_write()
 		{
 			auto self(this->shared_from_this());
-			boost::asio::async_write(_socket, boost::asio::buffer(_reply.data(),
+			boost::asio::async_write(_server->get_client(_host, _port), boost::asio::buffer(_reply.data(),
 																  _reply.size()),
 									 [this, self](boost::system::error_code ec,
-												  std::size_t /*length*/)
+												  std::size_t length)
 									 {
 										 if (!ec)
 										 {
@@ -125,27 +133,28 @@ public:
 		{
 			boost::system::error_code ec;
 			string str = "-1";
-			size_t n = _socket.read_some(boost::asio::buffer(_data), ec);
+			size_t n = _server->get_client(_host, _port).read_some(boost::asio::buffer(_data), ec);
 
 			if (std::all_of(std::begin(_server->_password),
 							std::end(_server->_password), [](char ch) {return ch == 0;})) {
 				str = "0";
-				_socket.write_some(boost::asio::buffer(str.c_str(), str.size()));
+				_server->get_client(_host, _port).write_some(boost::asio::buffer(str.c_str(), str.size()));
 				return 0;
 			}
 			
-			if (n==0 || ec) {
-				_socket.close();
+			if (n == 0 || ec) {
+				_server->get_client(_host, _port).close();
 				return 1;
 			}
 			
 			if (_server->login(string(_data.begin(), _data.begin() + n)) != 0) {
-				_socket.write_some(boost::asio::buffer(str.c_str(), str.size()));
-				_socket.close();
+				_server->get_client(_host, _port).write_some(boost::asio::buffer(str.c_str(), str.size()));
+				_server->get_client(_host, _port).close();
 				return 1;
-			} else {
+			}
+			else {
 				str = "0";
-				_socket.write_some(boost::asio::buffer(str.c_str(), str.size()));
+				_server->get_client(_host, _port).write_some(boost::asio::buffer(str.c_str(), str.size()));
 				return 0;
 			}
 			return 1;
@@ -153,7 +162,8 @@ public:
 
 private:
 	size_t cur = 0;
-	tcp::socket& _socket;
+	string _host;
+	short _port;
 	std::array<char, 8192> _data;
 	std::string _reply;
 	std::shared_ptr<T> _server;
@@ -174,13 +184,18 @@ private:
 	unsigned char _password[MD5_DIGEST_LENGTH] = {0};
 
 	std::vector<tcp::socket> _master;
-	std::vector<tcp::socket> _sentry;
-	std::vector<tcp::socket> _clients;
+
+	std::map<std::pair<string, unsigned short>, tcp::socket> _sentry;
+	std::map<std::pair<string, unsigned short>, tcp::socket> _clients;
 	std::map<std::pair<string, unsigned short>, tcp::socket> _slaves;
 
 	std::vector<string> _aof_buffers;
 	std::ofstream _aof_stream;
+	size_t _sock_counts = 0;
 private:
+	string _address;
+	string _port;
+	
 	boost::asio::io_service _service;
 
   	boost::asio::ip::tcp::acceptor _acceptor;
@@ -197,52 +212,227 @@ public:
 		:
 		_service(),
 		_acceptor(_service),
-		_socket(_service)
+		_socket(_service),
+		_address(address),
+		_port(port)
 		{
-			boost::asio::ip::tcp::resolver resolver(_service);
-			boost::asio::ip::tcp::endpoint endpoint = *resolver.resolve({address, port});
-			_acceptor.open(endpoint.protocol());
-			_acceptor.set_option(boost::asio::ip::tcp::acceptor::reuse_address(true));
-			_acceptor.bind(endpoint);
-			_acceptor.listen();
+			
 		}
 
 	int
 	login(const string& pwd)
 		{
 			read_lock rlock(_lock);
-			unsigned char buffer[MD5_DIGEST_LENGTH] = {};
-			MD5_CTX ctx;
-			MD5_Init(&ctx);
-
-			MD5_Update(&ctx, pwd.c_str(), pwd.size());
-			MD5_Final(buffer, &ctx);
-			int ret = memcmp(_password, buffer, MD5_DIGEST_LENGTH);
+			
+			int ret = memcmp(_password, pwd.c_str(), MD5_DIGEST_LENGTH);
 			
 			return ret ? -1 : 0;
 		}
 
 	void
-	set_pwd(const string& new_pwd)
+	rm_cli(const string& addr, unsigned short port)
 		{
 			write_lock wlock(_lock);
-			MD5_CTX ctx;
-			MD5_Init(&ctx);
-
-			MD5_Update(&ctx, new_pwd.c_str(), new_pwd.size());
-			MD5_Final(_password, &ctx);
+			auto iter = _clients.find(std::make_pair(addr, port));
+			if (iter != _clients.end())
+				_clients.erase(iter);
 		}
-
+	
 	void
-	set_rawpwd(const string& new_pwd)
+	evolve()
+		{
+			write_lock wlock(_lock);
+			clear();
+			
+			wlock.unlock();
+			restore();
+			run();
+			
+		}
+	
+	void
+	set_pwd(const string& new_pwd)
 		{
 			write_lock wlock(_lock);
 			memcpy(_password, new_pwd.c_str(), MD5_DIGEST_LENGTH);
 		}
+
+	string
+	get_rawpwd()
+		{
+			read_lock rlock(_lock);
+			return string(std::begin(_password), std::end(_password));
+		}
+
+	void
+	slave()
+		{
+			char buffer[configs::BUFF_SIZE];
+			_master.front().write_some(boost::asio::buffer("add_slave",
+														   strlen("add_slave")));
+			size_t n = _master.front().read_some(boost::asio::buffer(buffer, sizeof(buffer)));
+			if (buffer[0] != '0') {
+				string str = "failed to be the slave of ";
+				str.append(_address);
+				str.append(" ");
+				str.append(_port);
+				
+				throw std::runtime_error(str);
+			}
+		}
 	
+	void run_as_slave()
+		{
+			connect_to_master();
+			_master.front().write_some(boost::asio::buffer("send aof",
+														   strlen("send aof")));
+			receive_file(configs::aof_path);
+			restore_from_aof();
+
+
+			_master.front().write_some(boost::asio::buffer("send mdf",
+														   strlen("send mdf")));
+			receive_file(configs::mdf_path);
+
+			_master.front().write_some(boost::asio::buffer("send config",
+														   strlen("send config")));
+			receive_file(configs::config_path);
+			
+			slave();
+			
+			string foo;
+			for(;;) {
+				foo.clear();
+				boost::asio::streambuf reply;
+				size_t n = boost::asio::read_until(_master.front(), reply, '\n');
+				std::string cmd = make_string(reply);
+				log("recive cmd: ", cmd);
+				//auto sess = std::make_shared<session<server>>("fake", -1,
+				//											  this->shared_from_this());
+				
+				//sess->handle_request(cmd.begin(), cmd.end(), foo);
+				write_aof(cmd);
+			}
+		}
+
+	int
+	send_file(const string& addr, unsigned short port, const string& file)
+		{
+			tcp::socket& sock = get_client(addr, port);
+			
+			read_lock rlock(_lock);
+			std::ifstream is(file, std::ios::binary|std::ios::ate);
+			if (!is)
+			{
+				log("failed to open ", file);
+				return -1;
+			}
+
+			log("open ", file);
+			size_t file_size = is.tellg();
+			is.seekg(0);
+
+			string str;
+			str.append(std::to_string(file_size));
+			str.append("\n");
+			
+			char buffer[configs::BUFF_SIZE] = {0};
+			log("start to send ", file, " to ", addr, " ", port);
+			sock.write_some(boost::asio::buffer(str.c_str(), str.size()));
+
+			while (is) {
+				is.read(buffer, sizeof(buffer));
+				if (is.gcount() <= 0) {
+					log("read ", file, " error");
+					return -1;
+				}
+
+				sock.write_some(boost::asio::buffer(buffer, is.gcount()));
+			}
+			log("sent ", file, " already");
+			return 0;
+		}
+
+	static
+	std::string make_string(boost::asio::streambuf& streambuf)
+		{
+			return {buffers_begin(streambuf.data()), 
+					buffers_end(streambuf.data())};
+		}
+	
+	void
+	receive_file(const string& file_name)
+		{
+			tcp::socket& sock = _master.front();
+			boost::asio::streambuf buf;
+			
+			size_t len = boost::asio::read_until(sock, buf, '\n');
+			log("satrt to receive ", file_name);
+
+			int64_t file_size = std::stoll(make_string(buf));
+			buf.consume(len);
+
+			if (fs::exists(file_name)) {
+				log(file_name, " exists.\n removing it");
+				fs::rm(file_name);
+			}
+
+			log(file_name, " size: ", file_size);
+			
+			std::ofstream os(file_name, std::ios::binary | std::ios::app);
+			char buffer[configs::BUFF_SIZE];
+			
+			while (file_size > 0) {
+
+				len = sock.read_some(boost::asio::buffer(buffer,
+															sizeof(buffer)));
+				log("receive ", len, " bytes ", file_size);
+				file_size -= len;
+				if (file_size < 0)
+					os.write(buffer, len + file_size);
+			}
+			
+			os.flush();
+			log(file_name, " received");
+		}
+
+	void connect_to_master()
+		{
+			tcp::socket s(_service);
+			tcp::resolver resolver(_service);
+			log(_address, " ", _port);
+			boost::asio::connect(s, resolver.resolve({_address, _port}));
+			char request[configs::BUFF_SIZE];
+			auto pwd = utility::md5(getpass("Please enter the password: ",true));
+			strcpy(request, pwd.c_str());
+			size_t request_length = std::strlen(request);
+			boost::asio::write(s, boost::asio::buffer(request, request_length));
+	
+			char reply[8192];
+			boost::system::error_code ec;
+			size_t reply_length = s.read_some(boost::asio::buffer(reply));
+			if (memcmp(reply, "0", 1)) {
+				cout << "wrong password" << endl;
+				exit(1);
+			}
+			else
+				cout << "connected"<<endl;
+
+			add_master(std::move(s));
+		}
+
 	void run()
 		{
-			int ret = 0;
+			do_restore();
+			backup_cron();
+			listen();
+		    accept();
+			
+			_service.run();
+		}
+
+	void do_restore()
+		{
 			if (configs::mdf_restore ||
 				configs::aof_restore) {
 				clear();
@@ -253,17 +443,29 @@ public:
 				for(size_t i = 0; i != configs::init_db_num; ++i)
 					_dbs.push_back(std::make_shared<mdb>());
 			}
+		}
 
+	void backup_cron()
+		{
 			if (configs::backup_mdf_seconds > 0) {
 				boost::posix_time::seconds tick(configs::backup_mdf_seconds);
-				boost::asio::deadline_timer timer(_service, tick);
+				auto timer = std::make_shared<boost::asio::deadline_timer>(_service, tick);
 
-				timer.async_wait(boost::bind(&server::backup_frq, this,
-											 &timer, tick));
+				timer->async_wait(boost::bind(&server::backup_frq, this,
+											 timer, tick));
 				
 			}
-		    accept();
-			_service.run();
+
+		}
+	
+	void listen()
+		{
+			boost::asio::ip::tcp::resolver resolver(_service);
+			boost::asio::ip::tcp::endpoint endpoint = *resolver.resolve({_address, _port});
+			_acceptor.open(endpoint.protocol());
+			_acceptor.set_option(boost::asio::ip::tcp::acceptor::reuse_address(true));
+			_acceptor.bind(endpoint);
+			_acceptor.listen();
 		}
 
 	void accept()
@@ -274,12 +476,16 @@ public:
 								   {
 									   if (!ec)
 									   {
-										   _clients.push_back(std::move(_socket));
+										   string host = _socket.remote_endpoint().address().to_string();
+										   auto port = _socket.remote_endpoint().port();
+										   _clients.emplace(std::make_pair(host, port), std::move(_socket));
+										   
 										   auto start_session = [&](){
 											   std::make_shared<session<server>>(
-												   _sock_counts++,
+												   host, port,
 												   this->shared_from_this())->start();
 										   };
+										   
 										   std::thread(start_session).detach();
 									   }
 
@@ -297,15 +503,88 @@ public:
 		return 0;
 	}
 
-	void
-	dominate(tcp::socket&& _sock)
+	int monitor(const string& host, unsigned short port)
 		{
 			write_lock wlock(_lock);
-			string hostname = _sock.remote_endpoint().address().to_string();
-			unsigned short port  = _sock.remote_endpoint().port();
+			auto iter = _clients.find(std::make_pair(host, port));
+			if (iter == _clients.end())
+				return -1;
 
-			_slaves.emplace(std::make_pair(hostname, port), std::move(_sock));
-			wlock.unlock();
+			_sentry.emplace(std::make_pair(host, port),
+							std::move(iter->second));
+			_clients.erase(iter);
+
+			return 0;
+		}
+	
+	void get_slaves()
+		{
+			read_lock rlock(_lock);
+			for (auto && pis : _slaves) {
+				string str = pis.first.first;
+				str.append(":");
+				str.append(std::to_string(pis.first.second));
+				str.append("\n");
+
+				for (auto && se : _sentry) {
+					se.second.write_some(boost::asio::buffer(str.c_str(),
+															 str.size()));
+				}
+			}
+			log("write all slaves to ", " sentry");
+		}
+	
+	tcp::socket&
+	get_client(const string& host, unsigned short port)
+		{
+			read_lock rlock(_lock);
+			auto iter = _clients.find(std::make_pair(host, port));
+			if (iter != _clients.end())
+				return iter->second;
+			auto iter2 = _slaves.find(std::make_pair(host, port));
+			if (iter2 != _slaves.end())
+				return iter2->second;
+			return _sentry.at(std::make_pair(host, port));
+		}
+
+	void
+	add_master(tcp::socket sock)
+		{
+			write_lock wlock(_lock);
+			_master.push_back(std::move(sock));
+		}
+
+	void
+	remove_master()
+		{
+			write_lock wlock(_lock);
+			_master.clear();
+		}
+
+	void
+	remove_client(const string& host, unsigned short port)
+		{
+			write_lock wlock(_lock);
+			auto iter = _clients.find({host, port});
+			if (iter != _clients.end())
+				_clients.erase(iter);
+		}
+		
+	void
+	add_slave(const string& hostname, unsigned short port)
+		{
+			write_lock wlock(_lock);
+			log("start add slave");
+			
+			auto iter = _clients.find(std::make_pair(hostname, port));
+			if (iter == _clients.end())
+				return ;
+			
+			tcp::socket& sock = iter->second;
+
+			_slaves.emplace(std::make_pair(hostname, port), std::move(sock));
+			_clients.erase(iter);
+			
 			send_to_sentry(hostname, port);
 		}
 
@@ -313,24 +592,34 @@ public:
 		{
 			if (_sentry.empty())
 				return ;
+			
 			string pr = hostname;
 			pr.append(" ");
 			pr.append(std::to_string(port));
 			pr.append("\n");
 
-			for (size_t i = 0; i != _sentry.size(); ++i)
-			if (_sentry.at(i).is_open())
-				boost::asio::write(_sentry[i],
-								   boost::asio::buffer(pr.c_str(), pr.size()));
-			else
-				_sentry.erase(_sentry.begin() + i);
+			for (size_t i = 0; i != _sentry.size(); ++i) {
+				auto key = _sentry.begin()->first;
+				tcp::socket& sock = _sentry.begin()->second;
+				
+				if (sock.is_open()) {
+					boost::asio::write(sock,
+									   boost::asio::buffer(pr.c_str(), pr.size()));
+				}
+				else {
+					_sentry.erase(key);
+					--i;
+				}
+			}
 		}
 
 	void add_sentry(tcp::socket&& sock)
 		{
 			write_lock wlock(_lock);
 			/* TO DO now support only one sentry */
-			_sentry.push_back(std::move(sock));
+			_sentry.emplace(std::make_pair(sock.remote_endpoint().address().to_string(),
+										   sock.remote_endpoint().port()),
+							std::move(sock));
 			wlock.unlock();
 
 			read_lock rlock(_lock);
@@ -338,7 +627,7 @@ public:
 				send_to_sentry(slave.first.first, slave.first.second);
 			}
 		}
-	
+
 	int shutdown()
 		{
 			backup();
@@ -386,16 +675,24 @@ public:
 		_dbs.at(pos)->clear();
 	}
 
-	void backup_frq(boost::asio::deadline_timer* t,
+	static void
+	_backup_thread(std::shared_ptr<server> ptr,
+				   std::shared_ptr<boost::asio::deadline_timer> t,
+				   boost::posix_time::seconds tick)
+		{
+			ptr->backup();
+			t->expires_at(t->expires_at() + tick);
+			t->async_wait(boost::bind(_backup_thread,
+									  ptr, t, tick));
+			
+		}
+	
+	void backup_frq(std::shared_ptr<boost::asio::deadline_timer> t,
 					boost::posix_time::seconds tick)
 		{
-			auto _backup_thread = [&]() {
-				backup();
-			t->expires_at(t->expires_at() + tick);
-			t->async_wait(boost::bind(&server::backup_frq,
-									  this, t, tick));
-			};
-			boost::thread(_backup_thread).detach();
+			boost::thread(boost::bind(_backup_thread,
+									  this->shared_from_this(),
+									  t, tick)).detach();
 		}
 
 	void
@@ -419,8 +716,15 @@ public:
 			}
 
 			for (auto && ele : _aof_buffers) {
-				_aof_stream << ele << "\n";
+				ele.append("\n");
+				_aof_stream << ele;
 				_aof_stream.flush();
+
+				for (auto && pis : _slaves) {
+					pis.second.write_some(boost::asio::buffer(ele.c_str(),
+															  ele.size()));
+					log("sent cmd: ", ele);
+				}
 			}
 
 			_aof_buffers.clear();
@@ -428,9 +732,10 @@ public:
 	
 	void
 	backup() {
-		read_lock rlock(_lock);
+		write_lock rlock(_lock);
+		log("start backup mdf");
 		if (fs::is_exists(configs::mdf_path)) {
-			log("file exists, removing it");
+			log(configs::mdf_path, " exists, removing it");
 			fs::rm(configs::mdf_path);
 		}
 
@@ -445,18 +750,19 @@ public:
 		
 		size_t holder = _dbs.size();
 		fs::write_to(os, holder, crc);
-
+		
 		for (size_t dbid = 0; dbid != _dbs.size(); ++dbid) {
 			fs::write_to(os, dbid, crc);
 			_dbs[dbid]->write_to(os);
 		}
-
 		fs::write_to(os, crc.checksum(), crc).flush();
+		log("end of backup mdf");
 	}
 
 	void
 	backup_aof() {
-		read_lock rlock(_lock);
+		write_lock rlock(_lock);
+		log("start aof backup");
 		if (fs::is_exists(configs::aof_path)) {
 			log(configs::aof_path, " exists, removing it");
 			fs::rm(configs::aof_path);
@@ -474,16 +780,18 @@ public:
 			os << cmd;
 			_dbs[dbid]->write_aof(os);
 		}
+		log("end of aof backup");
 	}
 
 	int
     restore_from_mdf() {
 		clear();
 		write_lock wlock(_lock);
+		log("start mdf restore");
 		std::ifstream is(configs::mdf_path, std::ios::binary);
 		if (!is || !is.is_open()) {
 			log(configs::mdf_path, " open error");
-			return 1;
+			return -1;
 		}
 		
 		size_t holder;
@@ -492,14 +800,14 @@ public:
 		fs::read_from(is, str, crc);
 		if (str != configs::MONOCO) {
 			log("NOT support file");
-			return 1;
+			return -1;
 		}
 
 		long double version;
 		fs::read_from(is, version, crc);
 		if (version < configs::VERSION) {
 			log("NOT support version");
-			return 1;
+			return -1;
 		}
 
 		is.read((char*)_password, sizeof(_password));
@@ -521,52 +829,63 @@ public:
 		fs::read_from(is, sum, crc);
 		if (sum != oldsum)
 			log("checksum diffs");
-		
+
+		log("end of mdf restore");
 		return 0;
 	}
 
-	void
+	int
 	restore_from_aof()
 		{
 			clear();
 			/* FIX ME since call handle_cmd will require wlock again*/
 			//write_lock wlock(_lock);
+			log("start aof restore");
 			std::ifstream is(configs::aof_path);
 			if (!is || !is.is_open()) {
 				log("can't open ", configs::aof_path);
-				return exit(1);
+				//return exit(1);
+				return -1;
 			}
 
-			tcp::socket tmp_sock(_service);
 			auto ptr = std::make_shared<session<server>>(
-				tmp_sock,
+				"", 0,
 				this->shared_from_this());
 			  
 			char buffer[8196];
 			while (is.getline(buffer, sizeof(buffer))) {
-				string cmd(buffer);
+				string cmd(buffer, buffer + is.gcount());
 				string reply;
 	
 				int ret = ptr->handle_request(cmd.begin(), cmd.end(),
 											  reply);
 				if (ret == -1) {
 					log("restore from aof error");
-					exit(1);
+					//exit(1);
+					return -1;
 				}
 			}
+
+			log("end of aof restore");
+			return 0;
 		}
 
 	void
 	restore()
 		{
+			int ret = -1;
 			if (configs::aof_restore) {
-				restore_from_aof();
-				return ;
+				ret = restore_from_aof();
 			}
-			if (configs::mdf_restore) {
-				restore_from_mdf();
-				return ;
+			if (ret == -1  && configs::mdf_restore) {
+				ret = restore_from_mdf();
 			}
+
+			if (ret == -1) {
+				log("restore error, quit");
+				exit(1);
+			}
+				
 		}
 };
 

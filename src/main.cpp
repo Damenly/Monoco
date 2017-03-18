@@ -15,6 +15,7 @@ int
 main(int argc, char** argv)
 {
 	try {
+		utility::parse_config();
 		auto s = make_shared<server>("127.0.0.1", argv[1]);
 		s->run();
 	}

@@ -1,5 +1,3 @@
-#include <termio.h>
-
 #include <cstdlib>
 #include <cstring>
 #include <string>
@@ -8,59 +6,13 @@
 #include <boost/asio.hpp>
 #include <array>
 
+#include "passwd.hpp"
+#include "utility.hpp"
+
 using boost::asio::ip::tcp;
 using namespace std;
 
 enum { max_length = 1024 };
-
-int getch() {
-    int ch;
-    struct termios t_old, t_new;
-
-    tcgetattr(STDIN_FILENO, &t_old);
-    t_new = t_old;
-    t_new.c_lflag &= ~(ICANON | ECHO);
-    tcsetattr(STDIN_FILENO, TCSANOW, &t_new);
-
-    ch = getchar();
-
-    tcsetattr(STDIN_FILENO, TCSANOW, &t_old);
-    return ch;
-}
-
-
-string getpass(const char *prompt, bool show_asterisk=true)
-{
-  const char BACKSPACE = 127;
-  const char RETURN = 10;
-
-  string password;
-  unsigned char ch = 0;
-
-  cout << prompt << endl;
-
-  while ((ch = getch()) != RETURN)
-    {
-       if (ch == BACKSPACE)
-         {
-            if (password.length()!=0)
-              {
-                 if (show_asterisk)
-					 cout <<"\b \b";
-                 password.resize(password.length() - 1);
-              }
-         }
-       else
-         {
-             password += ch;
-             if(show_asterisk)
-                 cout <<'*';
-         }
-    }
-  
-  cout <<endl;
-  return password;
-}
 
 
 int main(int argc, char* argv[])
@@ -69,7 +21,7 @@ int main(int argc, char* argv[])
   {
     if (argc != 3)
     {
-      std::cerr << "Usage: blocking_tcp_echo_client <host> <port>\n";
+      std::cerr << "Usage: ./client <host> <port>\n";
       return 1;
     }
 
@@ -86,8 +38,7 @@ int main(int argc, char* argv[])
 	if (logined)
 		std::cin.getline(request, max_length);
 	else {
-		cout << "Please input password" << endl;
-		auto pwd = getpass("Please enter the password: ",true);
+		auto pwd = monoco::utility::md5(getpass("Please enter the password: ",true));
 		strcpy(request, pwd.c_str());
 	}
 	
@@ -99,7 +50,6 @@ int main(int argc, char* argv[])
     boost::asio::write(s, boost::asio::buffer(request, request_length));
 	
 	char reply[8192];
-	boost::system::error_code ec;
     size_t reply_length = s.read_some(boost::asio::buffer(reply));
 	
 	if (logined)

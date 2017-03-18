@@ -1,0 +1,46 @@
+#                                               -*- Autoconf -*-
+# Process this file with autoconf to produce a configure script.
+
+AC_PREREQ([2.69])
+AC_INIT([Monoco], [0.01], [Damenly@outlook.com])
+AM_INIT_AUTOMAKE(Monoco, 0.01)
+AC_CONFIG_SRCDIR([config.h.in])
+AC_CONFIG_HEADERS([config.h])
+
+# Checks for programs.
+AC_PROG_CXX([clang++])
+AC_PROG_CC([clang])
+
+# Checks for libraries.
+# FIXME: Replace `main' with a function in `-lboost_filesystem':
+AC_CHECK_LIB([boost_filesystem], [-lboost_filesystem])
+# FIXME: Replace `main' with a function in `-lboost_system':
+AC_CHECK_LIB([boost_system], [-lboost_system])
+# FIXME: Replace `main' with a function in `-lboost_thread':
+AC_CHECK_LIB([boost_thread], [-lboost_thread])
+# FIXME: Replace `main' with a function in `-lcrypto':
+AC_CHECK_LIB([crypto], [-lcrpto])
+# FIXME: Replace `main' with a function in `-lpthread':
+AC_CHECK_LIB([pthread], [-lpthread])
+
+# Checks for header files.
+
+# Checks for typedefs, structures, and compiler characteristics.
+AC_CHECK_HEADER_STDBOOL
+AC_C_INLINE
+AC_TYPE_INT16_T
+AC_TYPE_INT32_T
+AC_TYPE_INT64_T
+AC_TYPE_INT8_T
+AC_TYPE_SIZE_T
+AC_TYPE_UINT16_T
+AC_TYPE_UINT32_T
+AC_TYPE_UINT64_T
+AC_TYPE_UINT8_T
+
+# Checks for library functions.
+AC_FUNC_ERROR_AT_LINE
+
+AC_CONFIG_FILES([Makefile
+                 src/Makefile])
+AC_OUTPUT
