@@ -68,7 +68,7 @@ static bool mdf_restore = false;
 static bool aof_restore = true;
 static std::string mdf_path = ".mdf";
 static std::string aof_path = ".aof";
-static std::string config_path = "../monoco.conf";
+static std::string config_path = "monoco.conf";
 static size_t init_db_num = 16;
 
 

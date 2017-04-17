@@ -6,7 +6,7 @@
 #include <unordered_set>
 
 #include "cmds.cpp"
-#include "server.hpp"
+#include "slave.hpp"
 
 using namespace monoco;
 using namespace std;
@@ -20,8 +20,8 @@ main(int argc, char** argv)
 	}
 	try {
 		//utility::parse_config();
-		auto s = make_shared<server>(argv[1], argv[2]);
-		s->run_as_slave();
+		auto s = make_shared<slave>(argv[1], argv[2]);
+		s->run();
 	}
 	catch(exception &e) { cout <<e.what();}
 }

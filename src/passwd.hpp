@@ -1,7 +1,7 @@
 #ifndef  _PASSWD_HPP
 #define  _PASSWD_HPP
 
-#include <termio.h>
+#include <termios.h>
 #include <unistd.h>
 
 #include <cstdlib>

@@ -14,6 +14,8 @@ using namespace std;
 int
 main(int argc, char** argv)
 {
+	if (argc != 2)
+		log("usage: ./server <port>");
 	try {
 		utility::parse_config();
 		auto s = make_shared<server>("127.0.0.1", argv[1]);

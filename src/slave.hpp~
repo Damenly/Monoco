@@ -1,0 +1,9 @@
+#ifndef _M_SLAVE_HPP
+#define _M_SLAVE_HPP
+
+class slave : public server
+{
+
+}
+	
+#endif // end of _M_SLAVE_HPP
