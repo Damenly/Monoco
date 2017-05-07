@@ -30,7 +30,7 @@ target_link_libraries(client ${LIBS})
 add_executable(sentry ${SENTRY})
 target_link_libraries(sentry ${LIBS})
 
-add_executable(slave ${SLAVE})
+add_executable(slave ${slave})
 target_link_libraries(slave ${LIBS})
 
 
