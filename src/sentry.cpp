@@ -32,6 +32,7 @@ private:
 
 	char _buffer[configs::BUFF_SIZE];
 	char _passwd[MD5_DIGEST_LENGTH];
+	size_t _passwd_len;
 	
 	tcp::socket _socket;
 	tcp::resolver _resolver;
@@ -41,7 +42,9 @@ private:
 	
 	string _addr;
 	string _port;
-	
+
+	std::unordered_set<std::pair<string, string>,
+					   monoco::hashers::pairhash> _slaves;
 public:
 	sentry(const string& addr, const string& port): _socket(_service),
 													_resolver(_service),
@@ -63,12 +66,12 @@ public:
 			auto pwd = utility::md5(getpass("Please enter the password: ",true));
 			
 			memcpy(_passwd, pwd.c_str(), pwd.size());
-			
+
 			_socket.write_some(boost::asio::buffer(_passwd, pwd.size()));
 
-			auto len = _socket.read_some(boost::asio::buffer(_passwd, sizeof(_buffer)));
-			errs::log(string(_passwd, len));
-			if (_passwd[0] != '0') {
+			auto len = _socket.read_some(boost::asio::buffer(_buffer, sizeof(_buffer)));
+
+			if (_buffer[0] != '0') {
 				std::cerr << "Wrong password" << std::endl;
 				exit(1);
 			}
@@ -87,29 +90,37 @@ public:
 
 	void
 	get_slaves()
-		{/*
+		{
 			boost::asio::write(_socket, boost::asio::buffer("get_slaves",
 															strlen("get_slaves")));
 			boost::asio::streambuf buf;
 			
 			size_t len = boost::asio::read_until(_socket, buf, '\n');
-			errs::log("satrt to get slaves ");
+			_slaves.clear();
+			errs::log("start to get slaves ");
 
-			int64_t sz = std::stoll(make_string(buf));
+			int64_t sz = std::stoll(utility::make_string(buf));
 			buf.consume(len);
 
 			errs::log("size: ", sz);
+			char buffer[configs::BUFF_SIZE];
 			
-			while (sz > 0) {
-
-				len = sock.read_some(boost::asio::buffer(buffer,
-															sizeof(buffer)));
-				log("receive ", len, "bytes ", file_size);
-				file_size -= len;
-				if (file_size < 0)
-					os.write(buffer, len + file_size);
+			while (sz-- > 0) {
+				len = boost::asio::read_until(_socket, buf, '\n');
+				
+				string str = utility::make_string(buf);
+				buf.consume(len);
+				
+				log("got slaves", str);
+				auto index = str.find(':');
+				if (index == -1) {
+					log("error format of slaves");
+					return ;
+				}
+				
+				_slaves.emplace(str.substr(0, index),
+								str.substr(index + 1, -1));
 			}
-		 */
 		}
 	
 	void
@@ -118,29 +129,37 @@ public:
 			boost::asio::write(_socket, boost::asio::buffer("monitor",
 															strlen("monitor")));
 
-			//_dead_time.expires_from_now(boost::posix_time::seconds(configs::heartbeat_tick));
-			//_dead_time.async_wait([](auto ec){ throw std::runtime_error("monitor error");});
 			auto sz = _socket.read_some(boost::asio::buffer(_buffer,
 															sizeof(_buffer)));
-			//_dead_time.cancel();
+			
 			if (sz == 0 || _buffer[0] != '0') {
 				throw std::runtime_error("monitor server error");
 			}
 		}
-	/*
+
 	void login_to_slave()
 		{
+
 			_socket.write_some(boost::asio::buffer(_passwd, sizeof(_passwd)));
 
-			_socket.read_some(boost::asio::buffer(_passwd, sizeof(_buffer)));
+			_socket.read_some(boost::asio::buffer(_buffer, sizeof(_buffer)));
 			
 			if (_buffer[0] != '0') {
-				//std::cerr << "Wrong password" << std::endl;
+				std::cerr << "Wrong password" << std::endl;
 				exit(1);
 			}
 		}
-	
-	*/
+
+	void start_countdown()
+		{
+			//	_dead_time.expires_from_now(boost::posix_time::seconds(configs::expire_time));
+			//_dead_time.async_wait([](auto ec){ throw std::runtime_error("time expired");});
+		}
+
+	void cancel_countdown()
+		{
+			_dead_time.cancel();
+		}
 	
 	void
 	heartbeats(const boost::system::error_code& ec)
@@ -171,7 +190,7 @@ public:
 	read()
 		{
 			bool fail = false;
-			auto self(shared_from_this());
+			auto self = this->shared_from_this();
 			try{
 			_socket.async_read_some(boost::asio::buffer(_buffer,
 														sizeof(_buffer)),
@@ -181,35 +200,34 @@ public:
 										if (!ec)
 											write();
 										else {
-											errs::log("the server is down");
-											_socket.close();
-											fail = true;
+											errs::log("server is down");
+											_service.stop();
+											prompt_slave();
 										}
 									});
 			}
 			catch (...)
 			{
-				fail = true;
-			}
-
-			if (fail) {
-				_socket.close();
 				_service.stop();
-				//xactive_slaves();
+				prompt_slave();
 			}
 		}
 
-	/*
-	int
-	active_slaves()
+	void
+	prompt_slave()
 		{
 			bool available_salve = false;
 			
 			for (auto && pr : _slaves) {
 				try{
+					start_countdown();
+					errs::log("try connect ", pr.first, ":", pr.second);
+					//boost::asio::connect(_socket,
+					//					 _resolver.resolve({pr.first,
+					//								 pr.second}));
 					boost::asio::connect(_socket,
-										 _resolver.resolve({pr.first,
-													 pr.second}));
+										 _resolver.resolve({_addr, _port}));
+					cancel_countdown();
 					available_salve = true;
 					break;
 				}
@@ -224,13 +242,16 @@ public:
 			}
 			
 			login_to_slave();
-			_socket.write_some(boost::asio::buffer("evolve\n", strlen("evolve")));
-			_socket.write_some(boost::asio::buffer("monitor\n", strlen("monitor")));
-
+			monitor();
+			get_slaves();
+			//write();
+			_service.reset();
+			write();
 			_service.run();
+			log("reach end");
 		}
 	
-	*/
+
 	void run()
 		{
 			
@@ -250,7 +271,6 @@ int main(int argc, char* argv[])
 	}
 	
 	try {
-	//monoco::utility::parse_config();
 	auto s = std::make_shared<monoco::sentry>(argv[1], argv[2]);
 	s->start();
 	}

@@ -125,6 +125,17 @@ touch(const string& file_name)
 	return 0;
 }
 
+void
+mv(const string& old_name, const string& new_name)
+{
+	if(is_exists(new_name)) {
+		rm(new_name);
+		errs::log(new_name, " exists, removed it");
+	}
+
+	rename(path(old_name), path(new_name));
+}
+
 NAMESPACE_END(fs)
 NAMESPACE_END(monoco)
 

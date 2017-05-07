@@ -1,5 +1,0 @@
-AUTOMAKE_OPTIONS=foreign
-bin_PROGRAMS=Monoco
-SUBDIRS = src
-
-

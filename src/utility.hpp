@@ -11,6 +11,7 @@
 #include <fstream>
 #include <unordered_map>
 
+#include <boost/asio.hpp>
 #include <boost/lexical_cast.hpp>
 #include <boost/algorithm/string.hpp>
 #include <openssl/md5.h>
@@ -44,6 +45,12 @@ public:
 };
 
 NAMESPACE_BEGIN(utility)
+
+std::string make_string(boost::asio::streambuf& streambuf)
+		{
+			return {buffers_begin(streambuf.data()), 
+					buffers_end(streambuf.data())};
+		}
 
 string
 md5(const string& pwd) {
@@ -163,7 +170,7 @@ void parse_config()
 {
 	std::ifstream is(configs::config_path);
 	if (!is) {
-		errs::log("cannot open config file");
+		errs::log("can not open config file");
 		exit(1);
 	}
 

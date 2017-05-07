@@ -120,6 +120,7 @@ public:
 			string str = "-1";
 			size_t n = ser->get_client(_host, _port).read_some(boost::asio::buffer(_data), ec);
 
+			errs::log("start login");
 			if (std::all_of(std::begin(ser->_password),
 							std::end(ser->_password), [](char ch) {return ch == 0;})) {
 				str = "0";

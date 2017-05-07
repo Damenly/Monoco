@@ -61,7 +61,7 @@ static std::size_t intvec_max_len = 2 << 8;
 static const std::string MONOCO = "Monoco";
 static long double VERSION = 0.01;
 static size_t heartbeat_tick = 5;
-
+static size_t expire_time = 60;
 static int64_t cmd_aof_counts = 1;
 static int64_t backup_mdf_seconds = 60;
 static bool mdf_restore = false;

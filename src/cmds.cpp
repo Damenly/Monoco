@@ -73,7 +73,7 @@ handle_cmds(std::shared_ptr<T> sess, vector<string>& args, string& reply)
 	}
 
 	if (is_valid("get_slaves", 1, args, false)) {
-		ser->get_slaves();
+		ser->send_slaves();
 		return 0;
 	}
 	

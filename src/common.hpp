@@ -272,5 +272,17 @@ std::size_t hash_type<long double>()
 }
 NAMESPACE_END(types)
 
+NAMESPACE_BEGIN(hashers)
+
+struct pairhash {
+public:
+  template <typename T, typename U>
+  std::size_t operator()(const std::pair<T, U> &x) const
+  {
+    return std::hash<T>()(x.first) ^ std::hash<U>()(x.second);
+  }
+};
+
+NAMESPACE_END(hashers)
 NAMESPACE_END(monoco)
 #endif // __COMMON_M_HPP

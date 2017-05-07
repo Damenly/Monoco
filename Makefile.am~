@@ -1,5 +1,0 @@
-AUTOMAKE_OPTIONS=foreign
-bin_PROGRAMS=Monoco
-SUBDIRS = src
-AM_CFLAGS= -std=c++1z -lboost_system  -lpthread -lboost_filesystem -lcrypto -lboost_thread
-

@@ -7,6 +7,7 @@
 #include <fstream>
 #include <algorithm>
 #include <unordered_map>
+#include <cstdio>
 
 #include <boost/asio.hpp>
 #include <boost/thread.hpp>
@@ -150,7 +151,7 @@ public:
 			str.append("\n");
 			
 			char buffer[configs::BUFF_SIZE] = {0};
-			log("start to send ", file, " to ", addr, " ", port);
+			log("start to send ", file, "(", file_size, ") to ", addr, " ", port);
 			sock.write_some(boost::asio::buffer(str.c_str(), str.size()));
 
 			while (is) {
@@ -162,10 +163,10 @@ public:
 
 				sock.write_some(boost::asio::buffer(buffer, is.gcount()));
 			}
+			
 			log("sent ", file, " already");
 			return 0;
 		}
-	
 	
 	virtual void run()
 		{
@@ -263,11 +264,20 @@ public:
 			return 0;
 		}
 	
-	void get_slaves()
+	void send_slaves()
 		{
 			read_lock rlock(_lock);
+			string str = std::to_string(_slaves.size());
+			str.append("\n");
+			
+			for (auto && se : _sentry) {
+					se.second.write_some(boost::asio::buffer(str.c_str(),
+															 str.size()));
+					log("send slaves size ", str);
+				}
+			
 			for (auto && pis : _slaves) {
-				string str = pis.first.first;
+				str = pis.first.first;
 				str.append(":");
 				str.append(std::to_string(pis.first.second));
 				str.append("\n");
@@ -275,8 +285,10 @@ public:
 				for (auto && se : _sentry) {
 					se.second.write_some(boost::asio::buffer(str.c_str(),
 															 str.size()));
+					log("send ", str);
 				}
 			}
+			
 			log("write all slaves to ", " sentry");
 		}
 	
@@ -323,9 +335,9 @@ public:
 
 	void send_to_sentry(const string& hostname, unsigned short port)
 		{
-			if (_sentry.empty())
+			if (_sentry.empty()) {
 				return ;
-			
+			}
 			string pr = hostname;
 			pr.append(" ");
 			pr.append(std::to_string(port));
@@ -473,12 +485,10 @@ public:
 	backup_mdf() {
 		write_lock rlock(_lock);
 		log("start backup mdf");
-		if (fs::is_exists(configs::mdf_path)) {
-			log(configs::mdf_path, " exists, removing it");
-			fs::rm(configs::mdf_path);
-		}
 
-		std::ofstream os(configs::mdf_path, std::ios::binary);
+		string tmpfile = std::tmpnam(nullptr);
+
+		std::ofstream os(tmpfile, std::ios::binary);
 
 		boost::crc_32_type crc;
 		fs::write_to(os, configs::MONOCO, crc);
@@ -495,6 +505,8 @@ public:
 			_dbs[dbid]->write_to(os);
 		}
 		fs::write_to(os, crc.checksum(), crc).flush();
+
+		fs::mv(tmpfile, configs::mdf_path);
 		log("end of backup mdf");
 	}
 
@@ -502,23 +514,19 @@ public:
 	backup_aof() {
 		write_lock rlock(_lock);
 		log("start saving aof");
-		if (fs::is_exists(configs::aof_path)) {
-			log(configs::aof_path, " exists, removing it");
-			fs::rm(configs::aof_path);
-		}
 
-		std::ofstream os(configs::aof_path, std::ios::app);
-		os << "rawpwd "
-		   << string(std::begin(_password), std::end(_password))
-		   << std::endl;
-		
+		string tmpfile = std::tmpnam(nullptr);
+		std::ofstream os(tmpfile);
 		os << "resize " << _dbs.size() << std::endl;
+		
 		string cmd;
 		for (size_t dbid = 0; dbid != _dbs.size(); ++dbid) {
 			cmd = "select " + std::to_string(dbid) + "\n";
 			os << cmd;
 			_dbs[dbid]->write_aof(os);
 		}
+
+		fs::mv(tmpfile, configs::aof_path);
 		log("end of aof backup");
 	}
 

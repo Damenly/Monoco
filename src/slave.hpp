@@ -13,6 +13,7 @@ class slave : public server
 {
 protected:
 	vector<tcp::socket>_master;
+	bool is_slave = false;
 	
 public:
 	void
@@ -36,7 +37,6 @@ public:
 			receive_file(configs::aof_path);
 			restore_from_aof();
 
-
 			_master.front().write_some(boost::asio::buffer("send mdf",
 														   strlen("send mdf")));
 			receive_file(configs::mdf_path);
@@ -48,6 +48,8 @@ public:
 			_slave();
 			
 			string foo;
+
+			try {
 			for(;;) {
 				foo.clear();
 				boost::asio::streambuf reply;
@@ -59,6 +61,13 @@ public:
 				
 				//sess->handle_request(cmd.begin(), cmd.end(), foo);
 				write_aof(cmd);
+			}
+			}
+			catch (...)
+			{
+				errs::log("socket to master disconnected");
+				errs::log("waiting to be notified by sentry");
+				server::run();
 			}
 		}
 
@@ -78,6 +87,7 @@ public:
 				throw std::runtime_error(str);
 			}
 		}
+	
 	void connect_to_master()
 		{
 			tcp::socket s(_service);
@@ -116,21 +126,17 @@ public:
 		{
 			tcp::socket& sock = _master.front();
 			boost::asio::streambuf buf;
+			string tmpfile = std::tmpnam(nullptr);
 			
 			size_t len = boost::asio::read_until(sock, buf, '\n');
-			log("satrt to receive ", file_name);
+			log("start to receive ");
 
 			int64_t file_size = std::stoll(make_string(buf));
 			buf.consume(len);
 
-			if (fs::exists(file_name)) {
-				log(file_name, " exists.\n removing it");
-				fs::rm(file_name);
-			}
-
 			log(file_name, " size: ", file_size);
 			
-			std::ofstream os(file_name, std::ios::binary | std::ios::app);
+			std::ofstream os(tmpfile, std::ios::binary);
 			char buffer[configs::BUFF_SIZE];
 			
 			while (file_size > 0) {
@@ -145,6 +151,8 @@ public:
 			
 			os.flush();
 			log(file_name, " received");
+			
+			fs::mv(tmpfile, file_name);
 		}
 };
 

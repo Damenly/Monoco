@@ -1,0 +1,6 @@
+/Users/damenly/workspace/Monoco/CMakeFiles/rebuild_cache.dir
+/Users/damenly/workspace/Monoco/CMakeFiles/edit_cache.dir
+/Users/damenly/workspace/Monoco/CMakeFiles/slave.dir
+/Users/damenly/workspace/Monoco/CMakeFiles/sentry.dir
+/Users/damenly/workspace/Monoco/CMakeFiles/client.dir
+/Users/damenly/workspace/Monoco/CMakeFiles/server.dir
